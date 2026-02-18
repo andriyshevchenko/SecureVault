@@ -1,0 +1,88 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should-publish: ${{ steps.version-check.outputs.changed }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+        
+    - name: Check if version changed
+      id: version-check
+      run: |
+        CURRENT_VERSION=$(node --input-type=module -p "(await import('./package.json', { with: { type: 'json' } })).default.version")
+        if git rev-parse HEAD~1 >/dev/null 2>&1; then
+          git checkout HEAD~1 -- package.json
+          PREVIOUS_VERSION=$(node --input-type=module -p "(await import('./package.json', { with: { type: 'json' } })).default.version")
+          git checkout HEAD -- package.json
+        else
+          echo "No previous commit found, treating previous version as 0.0.0"
+          PREVIOUS_VERSION="0.0.0"
+        fi
+        
+        if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+          echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+          echo "changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "Version unchanged: $CURRENT_VERSION"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+
+  publish:
+    needs: check-version
+    if: needs.check-version.outputs.should-publish == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install system dependencies (Linux)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsecret-1-dev
+      
+    - name: Rebuild keytar
+      run: npm rebuild keytar
+      
+    - name: Run frontend tests
+      run: npm test
+      
+    - name: Run backend tests
+      run: npm run test:server
+      
+    - name: Build
+      run: npm run build
+      
+    - name: Publish to NPM
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}

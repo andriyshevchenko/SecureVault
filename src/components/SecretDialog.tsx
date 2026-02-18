@@ -31,7 +31,8 @@ interface SecretDialogProps {
 const categories: { value: SecretCategory; label: string }[] = [
   { value: 'password', label: 'Password' },
   { value: 'api-key', label: 'API Key' },
-  { value: 'credential', label: 'Credential' },
+  { value: 'token', label: 'Token' },
+  { value: 'certificate', label: 'Certificate' },
   { value: 'note', label: 'Note' },
   { value: 'other', label: 'Other' },
 ]

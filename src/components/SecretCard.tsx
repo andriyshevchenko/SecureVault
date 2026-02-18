@@ -27,16 +27,18 @@ interface SecretCardProps {
 const categoryColors: Record<string, string> = {
   password: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   'api-key': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  token: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  certificate: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   note: 'bg-green-500/10 text-green-400 border-green-500/20',
-  credential: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   other: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
 }
 
 const categoryLabels: Record<string, string> = {
   password: 'Password',
   'api-key': 'API Key',
+  token: 'Token',
+  certificate: 'Certificate',
   note: 'Note',
-  credential: 'Credential',
   other: 'Other',
 }
 

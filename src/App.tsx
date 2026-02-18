@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useState, useEffect } from 'react'
 import { Secret, SecretCategory, SecretFormData } from '@/lib/types'
+import { ApiClient } from '@/lib/api'
 import { Plus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,42 +13,78 @@ import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 
 function App() {
-  const [secrets, setSecrets] = useKV<Secret[]>('secrets', [])
+  const [secrets, setSecrets] = useState<Secret[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<SecretCategory | 'all'>('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSecret, setEditingSecret] = useState<Secret | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleAddSecret = (data: SecretFormData) => {
-    const newSecret: Secret = {
-      id: crypto.randomUUID(),
-      ...data,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+  // Load secrets from backend on mount
+  useEffect(() => {
+    const loadSecrets = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const data = await ApiClient.getSecrets()
+        setSecrets(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load secrets')
+        toast.error('Failed to connect to backend. Please make sure the server is running.')
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setSecrets((current) => [...(current || []), newSecret])
-    toast.success('Secret added successfully')
-    setIsDialogOpen(false)
+
+    loadSecrets()
+  }, [])
+
+  const handleAddSecret = async (data: SecretFormData) => {
+    try {
+      const newSecret = await ApiClient.createSecret({
+        id: crypto.randomUUID(),
+        ...data,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      setSecrets((current) => [...current, newSecret])
+      toast.success('Secret added successfully')
+      setIsDialogOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add secret')
+    }
   }
 
-  const handleEditSecret = (data: SecretFormData) => {
+  const handleEditSecret = async (data: SecretFormData) => {
     if (!editingSecret) return
     
-    setSecrets((current) =>
-      (current || []).map((secret) =>
-        secret.id === editingSecret.id
-          ? { ...secret, ...data, updatedAt: Date.now() }
-          : secret
+    try {
+      const updated = await ApiClient.updateSecret(editingSecret.id, {
+        ...data,
+        updatedAt: Date.now(),
+      })
+      setSecrets((current) =>
+        current.map((secret) =>
+          secret.id === editingSecret.id ? updated : secret
+        )
       )
-    )
-    toast.success('Secret updated successfully')
-    setEditingSecret(null)
-    setIsDialogOpen(false)
+      toast.success('Secret updated successfully')
+      setEditingSecret(null)
+      setIsDialogOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update secret')
+    }
   }
 
-  const handleDeleteSecret = (id: string) => {
-    setSecrets((current) => (current || []).filter((secret) => secret.id !== id))
-    toast.success('Secret deleted successfully')
+  const handleDeleteSecret = async (id: string) => {
+    try {
+      await ApiClient.deleteSecret(id)
+      setSecrets((current) => current.filter((secret) => secret.id !== id))
+      toast.success('Secret deleted successfully')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete secret')
+    }
   }
 
   const handleOpenEdit = (secret: Secret) => {
@@ -61,7 +97,7 @@ function App() {
     setEditingSecret(null)
   }
 
-  const filteredSecrets = (secrets || []).filter((secret) => {
+  const filteredSecrets = secrets.filter((secret) => {
     const matchesSearch = 
       secret.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       secret.notes?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -70,6 +106,47 @@ function App() {
 
     return matchesSearch && matchesCategory
   })
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center" role="status" aria-live="polite" aria-busy="true">
+          <div 
+            className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-accent"
+            aria-hidden="true"
+          ></div>
+          <p className="mt-4 text-muted-foreground">Loading secrets...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div 
+            className="text-red-500 text-4xl mb-4"
+            role="img"
+            aria-label="Warning: Connection error"
+          >
+            ⚠️
+          </div>
+          <h2 className="text-xl font-bold mb-2">Connection Error</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <p className="text-sm text-muted-foreground">
+            Please start the backend server from the project root: <code className="bg-card px-2 py-1 rounded">npm run server</code> or, if installed globally, run <code className="bg-card px-2 py-1 rounded">securevault</code>.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -115,7 +192,7 @@ function App() {
 
           {filteredSecrets.length === 0 ? (
             <EmptyState 
-              hasSecrets={(secrets || []).length > 0}
+              hasSecrets={secrets.length > 0}
               onAddSecret={() => setIsDialogOpen(true)}
             />
           ) : (

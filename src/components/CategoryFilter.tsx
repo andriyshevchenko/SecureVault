@@ -12,7 +12,8 @@ const categories: { value: SecretCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'password', label: 'Passwords' },
   { value: 'api-key', label: 'API Keys' },
-  { value: 'credential', label: 'Credentials' },
+  { value: 'token', label: 'Tokens' },
+  { value: 'certificate', label: 'Certificates' },
   { value: 'note', label: 'Notes' },
   { value: 'other', label: 'Other' },
 ]

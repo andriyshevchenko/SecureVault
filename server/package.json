@@ -1,0 +1,29 @@
+{
+  "name": "securevault-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Legacy manifest retained only to satisfy tooling. All scripts and dependencies are managed from the repository root package.json. Note: Dependencies like cross-env are installed from root; tests should be run from repository root directory using 'npm run test:server'.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=e2e",
+    "test:e2e": "cross-env NODE_OPTIONS=--experimental-vm-modules jest e2e",
+    "test:all": "cross-env NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "dependencies": {
+    "express": "^5.2.0",
+    "cors": "^2.8.5",
+    "keytar": "^7.9.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.9",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  }
+}

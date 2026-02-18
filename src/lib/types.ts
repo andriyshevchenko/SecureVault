@@ -1,4 +1,4 @@
-export type SecretCategory = 'password' | 'api-key' | 'note' | 'credential' | 'other'
+export type SecretCategory = 'password' | 'api-key' | 'token' | 'certificate' | 'note' | 'other'
 
 export interface Secret {
   id: string
