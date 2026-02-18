@@ -27,10 +27,10 @@ jobs:
     - name: Check if version changed
       id: version-check
       run: |
-        CURRENT_VERSION=$(node --input-type=module -p "(await import('./package.json', { with: { type: 'json' } })).default.version")
+        CURRENT_VERSION=$(node --input-type=module -e "import('./package.json', { with: { type: 'json' } }).then(m => console.log(m.default.version))")
         if git rev-parse HEAD~1 >/dev/null 2>&1; then
           git checkout HEAD~1 -- package.json
-          PREVIOUS_VERSION=$(node --input-type=module -p "(await import('./package.json', { with: { type: 'json' } })).default.version")
+          PREVIOUS_VERSION=$(node --input-type=module -e "import('./package.json', { with: { type: 'json' } }).then(m => console.log(m.default.version))")
           git checkout HEAD -- package.json
         else
           echo "No previous commit found, treating previous version as 0.0.0"
