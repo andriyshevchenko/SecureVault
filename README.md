@@ -1,7 +1,7 @@
 # SecureVault - Secret Manager
 
 [![CI](https://github.com/andriyshevchenko/sandboxed-ui/workflows/CI/badge.svg)](https://github.com/andriyshevchenko/sandboxed-ui/actions)
-[![npm version](https://badge.fury.io/js/@andriyshevchenko%2Fsecurevault.svg)](https://www.npmjs.com/package/@andriyshevchenko/securevault)
+[![npm version](https://badge.fury.io/js/@mcborov01%2Fsecurevault.svg)](https://www.npmjs.com/package/@mcborov01/securevault)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A secure, local secret manager application that uses your operating system's native keychain to store sensitive information like passwords, API keys, and credentials. Install globally via NPM and run with a simple command.
@@ -24,7 +24,7 @@ A secure, local secret manager application that uses your operating system's nat
 Install SecureVault globally using npm:
 
 ```bash
-npm install -g @andriyshevchenko/securevault
+npm install -g @mcborov01/securevault
 ```
 
 Then simply run:
@@ -160,7 +160,7 @@ This project includes GitHub Actions workflows for:
 To remove SecureVault:
 
 ```bash
-npm uninstall -g @andriyshevchenko/securevault
+npm uninstall -g @mcborov01/securevault
 ```
 
 ## Troubleshooting
