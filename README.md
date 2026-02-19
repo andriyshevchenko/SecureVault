@@ -35,6 +35,78 @@ securevault
 
 The application will start automatically and open in your default browser at `http://localhost:5000`.
 
+## Upgrading
+
+SecureVault can be easily upgraded to newer versions while preserving all your secrets and settings.
+
+### Upgrading to a New Version
+
+To upgrade SecureVault to the latest version:
+
+```bash
+npm install -g @mcborov01/securevault@latest
+```
+
+Or upgrade to a specific version:
+
+```bash
+npm install -g @mcborov01/securevault@1.0.2
+```
+
+### What Happens During an Upgrade
+
+**Your secrets are safe!** All your data persists across upgrades because:
+
+1. **Secret Values**: Stored in your OS keychain (completely independent of the application)
+   - Windows: Windows Credential Vault
+   - macOS: Keychain
+   - Linux: Secret Service API
+
+2. **Secret Metadata**: Stored in your user directory (not in the npm package)
+   - Windows: `%LOCALAPPDATA%\SecureVault\metadata.json`
+   - macOS: `~/Library/Application Support/SecureVault/metadata.json`
+   - Linux: `$XDG_CONFIG_HOME/securevault/metadata.json`
+
+When you upgrade, npm only updates the application code in its global packages directory. Your secrets and metadata remain untouched in their respective locations.
+
+### Verifying Your Upgrade
+
+After upgrading, verify the installation:
+
+```bash
+# Check the installed version
+npm list -g @mcborov01/securevault
+
+# Start the application
+securevault
+```
+
+Your secrets should appear exactly as they were before the upgrade.
+
+### Backup Recommendations
+
+While upgrades preserve your data automatically, it's good practice to backup your secrets:
+
+1. **Backup Metadata File**: Copy your metadata file to a safe location
+   - Windows: `%LOCALAPPDATA%\SecureVault\metadata.json`
+   - macOS: `~/Library/Application Support/SecureVault/metadata.json`
+   - Linux: `$XDG_CONFIG_HOME/securevault/metadata.json` (or `~/.config/securevault/metadata.json`)
+
+2. **Export from Keychain** (optional but recommended):
+   - **Windows**: Use "Credential Manager" to view/export SecureVault entries
+   - **macOS**: Use "Keychain Access" to export SecureVault entries
+   - **Linux**: Use your keyring manager (e.g., Seahorse) to backup SecureVault entries
+
+### Downgrading
+
+To downgrade to a previous version if needed:
+
+```bash
+npm install -g @mcborov01/securevault@1.0.0
+```
+
+Your secrets will remain intact during downgrades as well.
+
 ### Local Development
 
 If you want to contribute or run from source:
@@ -169,6 +241,8 @@ When using SecureVault, your data is stored in two places:
    - **Windows**: `%LOCALAPPDATA%\SecureVault\metadata.json` (uses `LOCALAPPDATA` environment variable or defaults to `%USERPROFILE%\AppData\Local`)
    - **macOS**: `~/Library/Application Support/SecureVault/metadata.json`
    - **Linux**: `$XDG_CONFIG_HOME/securevault/metadata.json` (uses `XDG_CONFIG_HOME` environment variable or defaults to `~/.config`)
+
+**Important**: These storage locations are independent of the application installation directory, which means your secrets automatically persist across application upgrades, reinstalls, and restarts.
 
 ## Uninstalling
 
