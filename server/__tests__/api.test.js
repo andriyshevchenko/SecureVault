@@ -23,8 +23,21 @@ describe('SecureVault API', () => {
 
   beforeAll(async () => {
     // Set up a test Express app after mocking dependencies
-    // Note: These tests re-implement API routes for isolated testing with mocked keytar.
-    // For integration tests against the real server, see e2e tests.
+    // 
+    // NOTE: Test Architecture
+    // -----------------------
+    // These unit tests re-implement API routes with mocked keytar for isolated testing.
+    // They do NOT import or test the actual server/index.js file.
+    // 
+    // Metadata persistence is tested separately:
+    // - persistence.test.js: Unit tests for metadataStore module (getMetadataPath, loadMetadata, saveMetadata)
+    // - integration.test.js: Integration tests simulating server restarts with metadata persistence
+    // - e2e tests: Full integration tests with real keychain and server
+    // 
+    // This separation allows:
+    // 1. Fast unit tests for API logic without filesystem/keychain dependencies
+    // 2. Focused tests for persistence behavior
+    // 3. Complete end-to-end validation in e2e tests
     app = express();
     app.use(cors());
     app.use(express.json());

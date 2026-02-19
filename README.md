@@ -152,8 +152,23 @@ This project includes GitHub Actions workflows for:
 - CORS is configured to only allow requests from localhost frontend origins (ports 3000, 5000, and 5173 for Vite dev server)
 - Do not expose the backend port to untrusted networks or bind it to `0.0.0.0`
 - No data is sent to any external servers
-- Secret metadata (title, category, notes) is stored in memory on the backend
+- Secret metadata (title, category, notes, timestamps) is stored in a local JSON file in your user directory
+- Secret values are stored securely in the OS keychain
 - Fallback to in-memory storage when OS keychain is unavailable
+
+### Data Storage Locations
+
+When using SecureVault, your data is stored in two places:
+
+1. **Secret Values**: Stored securely in your OS keychain
+   - **Windows**: Windows Credential Vault
+   - **macOS**: Keychain
+   - **Linux**: Secret Service API (GNOME Keyring, KWallet, etc.)
+
+2. **Secret Metadata**: Stored in a local JSON file
+   - **Windows**: `%LOCALAPPDATA%\SecureVault\metadata.json` (uses `LOCALAPPDATA` environment variable or defaults to `%USERPROFILE%\AppData\Local`)
+   - **macOS**: `~/Library/Application Support/SecureVault/metadata.json`
+   - **Linux**: `$XDG_CONFIG_HOME/securevault/metadata.json` (uses `XDG_CONFIG_HOME` environment variable or defaults to `~/.config`)
 
 ## Uninstalling
 
@@ -184,13 +199,19 @@ If ports 3001 or 5000 are already in use, you'll need to:
 1. Stop the conflicting service
 2. Or modify the ports in `server/index.js` and `bin/securevault.js`
 
-### Lost Secrets After Restart
+### Clearing All Data
 
-**Note**: Secret metadata (title, category, notes, timestamps) is currently stored in memory. When the server restarts:
-- Secret **values** remain safe in the OS keychain
-- Secret **metadata** is lost and secrets become inaccessible through the app
+To completely remove all secrets and metadata:
 
-**Workaround**: Secrets need to be recreated after server restart. For production use, we recommend implementing persistent metadata storage.
+1. Uninstall the package: `npm uninstall -g @mcborov01/securevault`
+2. Remove the metadata file:
+   - **Windows**: Delete `%LOCALAPPDATA%\SecureVault\metadata.json` (or `%USERPROFILE%\AppData\Local\SecureVault\metadata.json` if LOCALAPPDATA is not set)
+   - **macOS**: Delete `~/Library/Application Support/SecureVault/metadata.json`
+   - **Linux**: Delete `$XDG_CONFIG_HOME/securevault/metadata.json` (or `~/.config/securevault/metadata.json` if XDG_CONFIG_HOME is not set)
+3. Remove secrets from your OS keychain:
+   - **Windows**: Open "Credential Manager" and delete entries starting with "SecureVault"
+   - **macOS**: Open "Keychain Access" and search for "SecureVault"
+   - **Linux**: Use your system's keyring manager (e.g., Seahorse for GNOME)
 
 ## Contributing
 

@@ -1,7 +1,7 @@
 {
     "name": "@mcborov01/securevault",
     "private": false,
-    "version": "1.0.0",
+    "version": "1.0.1",
     "type": "module",
     "description": "Secure secret manager with OS keychain integration - runs locally on your machine",
     "keywords": [
