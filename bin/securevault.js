@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 function printHelp() {
   console.log(`
