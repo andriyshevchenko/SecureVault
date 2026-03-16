@@ -91,12 +91,12 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
       <Card className="group bg-card/50 border-border/50 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-lg font-semibold tracking-tight">
+            <CardTitle className="text-lg font-semibold tracking-tight truncate min-w-0">
               {secret.title}
             </CardTitle>
             <Badge
               variant="outline"
-              className={cn('text-xs border', categoryColors[secret.category])}
+              className={cn('text-xs border shrink-0', categoryColors[secret.category])}
             >
               {categoryLabels[secret.category]}
             </Badge>
