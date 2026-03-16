@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Secret } from '@/lib/types'
+import { ApiClient } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -42,16 +43,42 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
   const [isRevealed, setIsRevealed] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [secretValue, setSecretValue] = useState<string | null>(null)
+  const [isLoadingValue, setIsLoadingValue] = useState(false)
+
+  const fetchValue = async () => {
+    if (secretValue !== null) return secretValue
+    setIsLoadingValue(true)
+    try {
+      const value = await ApiClient.getSecretValue(secret.id)
+      setSecretValue(value)
+      return value
+    } catch {
+      toast.error('Failed to fetch secret value')
+      return null
+    } finally {
+      setIsLoadingValue(false)
+    }
+  }
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(secret.value)
+      const value = await fetchValue()
+      if (!value) return
+      await navigator.clipboard.writeText(value)
       setIsCopied(true)
       toast.success('Copied to clipboard')
       setTimeout(() => setIsCopied(false), 2000)
     } catch {
       toast.error('Failed to copy to clipboard')
     }
+  }
+
+  const handleReveal = async () => {
+    if (!isRevealed) {
+      await fetchValue()
+    }
+    setIsRevealed(!isRevealed)
   }
 
   const handleDelete = () => {
@@ -80,7 +107,7 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-muted/30 rounded px-3 py-2 font-mono text-sm overflow-hidden">
                 {isRevealed ? (
-                  <span className="break-all">{secret.value}</span>
+                  <span className="break-all">{secretValue ?? '...'}</span>
                 ) : (
                   <span className="text-muted-foreground">••••••••••••</span>
                 )}
@@ -88,7 +115,7 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => setIsRevealed(!isRevealed)}
+                onClick={handleReveal}
                 className="shrink-0 hover:bg-accent/10 hover:text-accent"
               >
                 {isRevealed ? <EyeSlash weight="bold" /> : <Eye weight="bold" />}

@@ -3,7 +3,7 @@ export type SecretCategory = 'password' | 'api-key' | 'token' | 'certificate' | 
 export interface Secret {
   id: string
   title: string
-  value: string
+  value?: string
   category: SecretCategory
   notes?: string
   createdAt: number

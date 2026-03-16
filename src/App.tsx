@@ -95,9 +95,14 @@ function App() {
     }
   }
 
-  const handleOpenEdit = (secret: Secret) => {
-    setEditingSecret(secret)
-    setIsDialogOpen(true)
+  const handleOpenEdit = async (secret: Secret) => {
+    try {
+      const value = await ApiClient.getSecretValue(secret.id)
+      setEditingSecret({ ...secret, value })
+      setIsDialogOpen(true)
+    } catch {
+      toast.error('Failed to fetch secret value for editing')
+    }
   }
 
   const handleCloseDialog = () => {
