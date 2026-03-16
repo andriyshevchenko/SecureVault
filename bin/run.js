@@ -89,13 +89,16 @@ export async function runCommand(args) {
         stdio: 'inherit',
       });
 
-  child.on('error', (err) => {
-    console.error(`Error: Failed to start command "${commandParts.join(' ')}": ${err.message}`);
-    process.exit(1);
-  });
+  // Return a promise that resolves with exit code when the child finishes
+  return new Promise((resolve, reject) => {
+    child.on('error', (err) => {
+      console.error(`Error: Failed to start command "${commandParts.join(' ')}": ${err.message}`);
+      reject(err);
+    });
 
-  child.on('close', (code) => {
-    process.exit(code ?? 1);
+    child.on('close', (code) => {
+      resolve(code ?? 1);
+    });
   });
 }
 

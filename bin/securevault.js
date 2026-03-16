@@ -131,8 +131,8 @@ if (cmd === '--version' || cmd === '-v') {
 
 if (cmd === 'run') {
   const { runCommand } = await import('./run.js');
-  await runCommand(args.slice(1));
-  process.exit(0);
+  const exitCode = await runCommand(args.slice(1));
+  process.exit(exitCode);
 }
 
 if (cmd === 'health') {
