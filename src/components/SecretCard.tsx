@@ -88,10 +88,10 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
 
   return (
     <>
-      <Card className="group bg-card/50 border-border/50 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200">
+      <Card className="group overflow-hidden bg-card/50 border-border/50 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-lg font-semibold tracking-tight truncate min-w-0">
+          <div className="flex items-start justify-between gap-2 overflow-hidden">
+            <CardTitle className="text-lg font-semibold tracking-tight truncate min-w-0 flex-1">
               {secret.title}
             </CardTitle>
             <Badge
