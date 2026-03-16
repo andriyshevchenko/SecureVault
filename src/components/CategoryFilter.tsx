@@ -1,4 +1,5 @@
 import { SecretCategory } from '@/lib/types'
+import { CATEGORIES } from '@/lib/categories'
 import { Button } from '@/components/ui/button'
 import { Folders } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
@@ -10,12 +11,7 @@ interface CategoryFilterProps {
 
 const categories: { value: SecretCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'password', label: 'Passwords' },
-  { value: 'api-key', label: 'API Keys' },
-  { value: 'token', label: 'Tokens' },
-  { value: 'certificate', label: 'Certificates' },
-  { value: 'note', label: 'Notes' },
-  { value: 'other', label: 'Other' },
+  ...CATEGORIES,
 ]
 
 export function CategoryFilter({ selected, onSelect }: CategoryFilterProps) {

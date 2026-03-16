@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Secret, SecretCategory, SecretFormData } from '@/lib/types'
+import { CATEGORIES } from '@/lib/categories'
 import {
   Dialog,
   DialogContent,
@@ -28,14 +29,7 @@ interface SecretDialogProps {
   mode: 'add' | 'edit'
 }
 
-const categories: { value: SecretCategory; label: string }[] = [
-  { value: 'password', label: 'Password' },
-  { value: 'api-key', label: 'API Key' },
-  { value: 'token', label: 'Token' },
-  { value: 'certificate', label: 'Certificate' },
-  { value: 'note', label: 'Note' },
-  { value: 'other', label: 'Other' },
-]
+
 
 export function SecretDialog({
   open,
@@ -115,7 +109,7 @@ export function SecretDialog({
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  {categories.map((cat) => (
+                  {CATEGORIES.map((cat) => (
                     <SelectItem key={cat.value} value={cat.value}>
                       {cat.label}
                     </SelectItem>

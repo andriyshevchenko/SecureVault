@@ -9,6 +9,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
+// Check for subcommands
+const args = process.argv.slice(2);
+if (args[0] === 'run') {
+  const { runCommand } = await import('./run.js');
+  await runCommand(args.slice(1));
+  // runCommand calls process.exit(), but just in case:
+  process.exit(0);
+}
+
 console.log('🔒 Starting SecureVault...\n');
 
 // Start backend server
