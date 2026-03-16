@@ -1,4 +1,4 @@
-import { Secret, SecretFormData } from './types'
+import { Secret, SecretFormData, Profile, ProfileFormData } from './types'
 
 const API_BASE_URL = 'http://localhost:3001/api'
 
@@ -60,5 +60,30 @@ export class ApiClient {
 
   static async checkHealth(): Promise<{ status: string; service: string }> {
     return this.request<{ status: string; service: string }>('/health')
+  }
+
+  // Profile methods
+  static async getProfiles(): Promise<Profile[]> {
+    return this.request<Profile[]>('/profiles')
+  }
+
+  static async createProfile(data: ProfileFormData & { id: string; createdAt: number; updatedAt: number }): Promise<Profile> {
+    return this.request<Profile>('/profiles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  static async updateProfile(id: string, data: ProfileFormData & { updatedAt: number }): Promise<Profile> {
+    return this.request<Profile>(`/profiles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  static async deleteProfile(id: string): Promise<void> {
+    return this.request<void>(`/profiles/${id}`, {
+      method: 'DELETE',
+    })
   }
 }

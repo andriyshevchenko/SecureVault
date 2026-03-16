@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Secret, SecretCategory, SecretFormData } from '@/lib/types'
+import { Secret, SecretCategory, SecretFormData, Profile, ProfileFormData } from '@/lib/types'
 import { ApiClient } from '@/lib/api'
 import { Plus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SecretCard } from '@/components/SecretCard'
 import { SecretDialog } from '@/components/SecretDialog'
+import { ProfileCard } from '@/components/ProfileCard'
+import { ProfileDialog } from '@/components/ProfileDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { CategoryFilter } from '@/components/CategoryFilter'
 import { Toaster } from '@/components/ui/sonner'
@@ -20,6 +22,10 @@ function App() {
   const [editingSecret, setEditingSecret] = useState<Secret | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'secrets' | 'profiles'>('secrets')
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
 
   // Load secrets from backend on mount
   useEffect(() => {
@@ -29,6 +35,8 @@ function App() {
         setError(null)
         const data = await ApiClient.getSecrets()
         setSecrets(data)
+        const profileData = await ApiClient.getProfiles()
+        setProfiles(profileData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load secrets')
         toast.error('Failed to connect to backend. Please make sure the server is running.')
@@ -97,6 +105,62 @@ function App() {
     setEditingSecret(null)
   }
 
+  const handleAddProfile = async (data: ProfileFormData) => {
+    try {
+      const newProfile = await ApiClient.createProfile({
+        id: crypto.randomUUID(),
+        ...data,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      setProfiles((current) => [...current, newProfile])
+      toast.success('Profile created successfully')
+      setIsProfileDialogOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create profile')
+    }
+  }
+
+  const handleEditProfile = async (data: ProfileFormData) => {
+    if (!editingProfile) return
+    try {
+      const updated = await ApiClient.updateProfile(editingProfile.id, {
+        ...data,
+        updatedAt: Date.now(),
+      })
+      setProfiles((current) =>
+        current.map((profile) =>
+          profile.id === editingProfile.id ? updated : profile
+        )
+      )
+      toast.success('Profile updated successfully')
+      setEditingProfile(null)
+      setIsProfileDialogOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update profile')
+    }
+  }
+
+  const handleDeleteProfile = async (id: string) => {
+    try {
+      await ApiClient.deleteProfile(id)
+      setProfiles((current) => current.filter((profile) => profile.id !== id))
+      toast.success('Profile deleted successfully')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete profile')
+    }
+  }
+
+  const handleOpenEditProfile = (profile: Profile) => {
+    setEditingProfile(profile)
+    setIsProfileDialogOpen(true)
+  }
+
+  const handleCloseProfileDialog = () => {
+    setIsProfileDialogOpen(false)
+    setEditingProfile(null)
+  }
+
   const filteredSecrets = secrets.filter((secret) => {
     const matchesSearch = 
       secret.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -162,63 +226,148 @@ function App() {
                   Manage your secrets securely
                 </p>
               </div>
-              <Button
-                onClick={() => setIsDialogOpen(true)}
-                className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20"
-              >
-                <Plus className="mr-2" weight="bold" />
-                Add Secret
-              </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex bg-muted/30 rounded-lg p-1">
+                  <button
+                    onClick={() => setActiveTab('secrets')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === 'secrets'
+                        ? 'bg-accent text-accent-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Secrets
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('profiles')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === 'profiles'
+                        ? 'bg-accent text-accent-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Profiles
+                  </button>
+                </div>
+                {activeTab === 'secrets' ? (
+                  <Button
+                    onClick={() => setIsDialogOpen(true)}
+                    className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20"
+                  >
+                    <Plus className="mr-2" weight="bold" />
+                    Add Secret
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setIsProfileDialogOpen(true)}
+                    className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20"
+                  >
+                    <Plus className="mr-2" weight="bold" />
+                    Add Profile
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
         <main className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            <div className="flex-1">
-              <Input
-                type="text"
-                placeholder="Search secrets..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-card/50 border-border/50 focus:border-accent/50 transition-colors"
-              />
-            </div>
-            <CategoryFilter
-              selected={selectedCategory}
-              onSelect={setSelectedCategory}
-            />
-          </div>
+          {activeTab === 'secrets' ? (
+            <>
+              <div className="flex flex-col md:flex-row gap-4 mb-8">
+                <div className="flex-1">
+                  <Input
+                    type="text"
+                    placeholder="Search secrets..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-card/50 border-border/50 focus:border-accent/50 transition-colors"
+                  />
+                </div>
+                <CategoryFilter
+                  selected={selectedCategory}
+                  onSelect={setSelectedCategory}
+                />
+              </div>
 
-          {filteredSecrets.length === 0 ? (
-            <EmptyState 
-              hasSecrets={secrets.length > 0}
-              onAddSecret={() => setIsDialogOpen(true)}
-            />
+              {filteredSecrets.length === 0 ? (
+                <EmptyState 
+                  hasSecrets={secrets.length > 0}
+                  onAddSecret={() => setIsDialogOpen(true)}
+                />
+              ) : (
+                <motion.div
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  layout
+                >
+                  <AnimatePresence mode="popLayout">
+                    {filteredSecrets.map((secret, index) => (
+                      <motion.div
+                        key={secret.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2, delay: index * 0.03 }}
+                        layout
+                      >
+                        <SecretCard
+                          secret={secret}
+                          onEdit={handleOpenEdit}
+                          onDelete={handleDeleteSecret}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </>
           ) : (
-            <motion.div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              layout
-            >
-              <AnimatePresence mode="popLayout">
-                {filteredSecrets.map((secret, index) => (
-                  <motion.div
-                    key={secret.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.2, delay: index * 0.03 }}
-                    layout
+            <>
+              {profiles.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="text-6xl mb-4">📋</div>
+                  <h3 className="text-xl font-semibold mb-2">No profiles yet</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Create a profile to map environment variables to your secrets.
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Then run: <code className="bg-card px-2 py-1 rounded font-mono">securevault run {'<command>'} --profile {'<name>'}</code>
+                  </p>
+                  <Button
+                    onClick={() => setIsProfileDialogOpen(true)}
+                    className="bg-accent text-accent-foreground hover:bg-accent/90"
                   >
-                    <SecretCard
-                      secret={secret}
-                      onEdit={handleOpenEdit}
-                      onDelete={handleDeleteSecret}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+                    <Plus className="mr-2" weight="bold" />
+                    Create Profile
+                  </Button>
+                </div>
+              ) : (
+                <motion.div
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  layout
+                >
+                  <AnimatePresence mode="popLayout">
+                    {profiles.map((profile, index) => (
+                      <motion.div
+                        key={profile.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2, delay: index * 0.03 }}
+                        layout
+                      >
+                        <ProfileCard
+                          profile={profile}
+                          secrets={secrets}
+                          onEdit={handleOpenEditProfile}
+                          onDelete={handleDeleteProfile}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </>
           )}
         </main>
       </div>
@@ -229,6 +378,15 @@ function App() {
         onSubmit={editingSecret ? handleEditSecret : handleAddSecret}
         initialData={editingSecret || undefined}
         mode={editingSecret ? 'edit' : 'add'}
+      />
+
+      <ProfileDialog
+        open={isProfileDialogOpen}
+        onOpenChange={handleCloseProfileDialog}
+        onSubmit={editingProfile ? handleEditProfile : handleAddProfile}
+        initialData={editingProfile || undefined}
+        mode={editingProfile ? 'edit' : 'add'}
+        secrets={secrets}
       />
 
       <Toaster position="top-right" />

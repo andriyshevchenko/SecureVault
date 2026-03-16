@@ -16,3 +16,21 @@ export interface SecretFormData {
   category: SecretCategory
   notes?: string
 }
+
+export interface ProfileMapping {
+  envVar: string
+  secretId: string
+}
+
+export interface Profile {
+  id: string
+  name: string
+  mappings: ProfileMapping[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ProfileFormData {
+  name: string
+  mappings: ProfileMapping[]
+}

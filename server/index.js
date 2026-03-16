@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import keytar from 'keytar';
-import { getMetadataPath, loadMetadata, saveMetadata } from './metadataStore.js';
+import { loadMetadata, saveMetadata } from './metadataStore.js';
+import { loadProfiles, saveProfiles } from './profileStore.js';
 
 const app = express();
 const PORT = 3001;
@@ -68,6 +69,15 @@ if (keychainAvailable) {
   console.log(`📂 Loaded ${secretsMetadata.length} secret(s) from persistent storage`);
 } else {
   console.log('📂 Keychain unavailable; metadata persistence disabled, starting with empty in-memory storage');
+}
+
+let profilesData = [];
+
+if (keychainAvailable) {
+  profilesData = loadProfiles();
+  console.log(`📂 Loaded ${profilesData.length} profile(s) from persistent storage`);
+} else {
+  console.log('📂 Keychain unavailable; profile persistence disabled, starting with empty in-memory storage');
 }
 
 // Storage abstraction layer
@@ -316,6 +326,168 @@ app.delete('/api/secrets/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting secret:', error);
     res.status(500).json({ error: 'Failed to delete secret' });
+  }
+});
+
+// GET /api/profiles
+app.get('/api/profiles', (req, res) => {
+  try {
+    res.json(profilesData);
+  } catch (error) {
+    console.error('Error fetching profiles:', error);
+    res.status(500).json({ error: 'Failed to fetch profiles' });
+  }
+});
+
+// POST /api/profiles
+app.post('/api/profiles', (req, res) => {
+  try {
+    const { id, name, mappings, createdAt, updatedAt } = req.body;
+    if (!id || !name || !mappings) {
+      return res.status(400).json({ error: 'Missing required fields: id, name, mappings' });
+    }
+    if (typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Name must be a non-empty string' });
+    }
+    if (!Array.isArray(mappings)) {
+      return res.status(400).json({ error: 'Mappings must be an array' });
+    }
+    for (const mapping of mappings) {
+      if (!mapping.envVar || !mapping.secretId) {
+        return res.status(400).json({ error: 'Each mapping must have envVar and secretId' });
+      }
+    }
+    const existingProfile = profilesData.find(p => p.id === id);
+    if (existingProfile) {
+      return res.status(409).json({ error: 'Profile with this ID already exists' });
+    }
+    const duplicateName = profilesData.find(p => p.name === name.trim());
+    if (duplicateName) {
+      return res.status(409).json({ error: 'Profile with this name already exists' });
+    }
+
+    const profile = { id, name: name.trim(), mappings, createdAt, updatedAt };
+    profilesData.push(profile);
+
+    if (keychainAvailable) {
+      try {
+        saveProfiles(profilesData);
+      } catch (persistError) {
+        profilesData.pop();
+        throw new Error('Failed to persist profile');
+      }
+    }
+    res.status(201).json(profile);
+  } catch (error) {
+    console.error('Error creating profile:', error);
+    res.status(500).json({ error: 'Failed to create profile' });
+  }
+});
+
+// PUT /api/profiles/:id
+app.put('/api/profiles/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, mappings, updatedAt } = req.body;
+    const index = profilesData.findIndex(p => p.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    if (name !== undefined && (typeof name !== 'string' || name.trim() === '')) {
+      return res.status(400).json({ error: 'Name must be a non-empty string' });
+    }
+    if (mappings !== undefined && !Array.isArray(mappings)) {
+      return res.status(400).json({ error: 'Mappings must be an array' });
+    }
+    if (mappings !== undefined) {
+      for (const mapping of mappings) {
+        if (!mapping.envVar || !mapping.secretId) {
+          return res.status(400).json({ error: 'Each mapping must have envVar and secretId' });
+        }
+      }
+    }
+    // Check for duplicate name (exclude current profile)
+    if (name !== undefined) {
+      const duplicateName = profilesData.find(p => p.name === name.trim() && p.id !== id);
+      if (duplicateName) {
+        return res.status(409).json({ error: 'Profile with this name already exists' });
+      }
+    }
+
+    const existing = profilesData[index];
+    const updated = {
+      ...existing,
+      name: name !== undefined ? name.trim() : existing.name,
+      mappings: mappings !== undefined ? mappings : existing.mappings,
+      updatedAt: updatedAt !== undefined ? updatedAt : existing.updatedAt,
+    };
+    profilesData[index] = updated;
+
+    if (keychainAvailable) {
+      try {
+        saveProfiles(profilesData);
+      } catch (persistError) {
+        profilesData[index] = existing;
+        throw new Error('Failed to persist profile');
+      }
+    }
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// DELETE /api/profiles/:id
+app.delete('/api/profiles/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const index = profilesData.findIndex(p => p.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    const deleted = profilesData[index];
+    profilesData.splice(index, 1);
+
+    if (keychainAvailable) {
+      try {
+        saveProfiles(profilesData);
+      } catch (persistError) {
+        profilesData.splice(index, 0, deleted);
+        throw new Error('Failed to persist profile deletion');
+      }
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting profile:', error);
+    res.status(500).json({ error: 'Failed to delete profile' });
+  }
+});
+
+// GET /api/profiles/:id/resolve - Resolve profile to env var → value pairs
+app.get('/api/profiles/:id/resolve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const profile = profilesData.find(p => p.id === id);
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const resolved = {};
+    for (const mapping of profile.mappings) {
+      try {
+        const value = await storage.getPassword(SERVICE_NAME, mapping.secretId);
+        if (value !== null) {
+          resolved[mapping.envVar] = value;
+        }
+      } catch (err) {
+        console.warn(`Warning: Could not resolve secret ${mapping.secretId}: ${err.message}`);
+      }
+    }
+    res.json({ profile: profile.name, variables: resolved });
+  } catch (error) {
+    console.error('Error resolving profile:', error);
+    res.status(500).json({ error: 'Failed to resolve profile' });
   }
 });
 
