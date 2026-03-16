@@ -105,11 +105,13 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-muted/30 rounded px-3 py-2 font-mono text-sm overflow-hidden">
-                {isRevealed ? (
+              <div className="flex-1 bg-muted/30 rounded px-3 py-2 font-mono text-sm overflow-hidden flex items-center min-h-[36px]">
+                {isLoadingValue ? (
+                  <span className="text-muted-foreground animate-pulse">Loading...</span>
+                ) : isRevealed ? (
                   <span className="break-all">{secretValue ?? '...'}</span>
                 ) : (
-                  <span className="text-muted-foreground">••••••••••••</span>
+                  <span className="text-muted-foreground tracking-wider">••••••••••••</span>
                 )}
               </div>
               <Button
