@@ -13,37 +13,43 @@ const VERSION = '1.0.1';
 
 function printHelp() {
   console.log(`
-SecureVault v${VERSION} — Secure secret manager with OS keychain integration
+TOOL: SecureVault v${VERSION}
+PURPOSE: Secure secret manager. Stores secrets in the OS keychain. Injects secrets as environment variables into any command via profiles.
 
-USAGE
-  securevault                     Launch the web UI (frontend + backend)
-  securevault run <cmd> --profile <name>
-                                  Run a command with secrets injected as env vars
-  securevault health              Check if the backend API is running
-  securevault list                List all stored secrets (titles only, no values)
-  securevault profiles            List all profiles and their env var mappings
-  securevault help, --help, -h    Show this help message
-  securevault --version, -v       Show version
+COMMANDS:
+  securevault                              Start the web UI (frontend on :5000, API on :3001). Required before using API or web UI.
+  securevault run <command> --profile <name>  Execute <command> with secrets from <name> profile injected as environment variables.
+  securevault health                        Returns OK if the backend API (port 3001) is reachable. Use this to check before calling other commands.
+  securevault list                          Print all stored secret titles, categories, and dates. Does NOT print secret values.
+  securevault profiles                      Print all profiles with their environment variable mappings.
+  securevault --help                        Print this message.
 
-EXAMPLES
-  securevault                              # Start the web app
-  securevault run dotnet run --profile dev  # Run dotnet with "dev" profile secrets
-  securevault run npm start --profile prod  # Run npm start with "prod" profile
-  securevault health                       # Check backend status
-  securevault list                         # Show all secret titles
-  securevault profiles                     # Show all profiles
+WORKFLOW FOR AI AGENTS:
+  Step 1: Run "securevault health" to check if the backend is running. If it fails, run "securevault" to start it.
+  Step 2: Run "securevault list" to see available secrets.
+  Step 3: Run "securevault profiles" to see available profiles and their env var mappings.
+  Step 4: Run "securevault run <your-command> --profile <name>" to execute a command with secrets injected.
 
-HOW IT WORKS
-  1. Store secrets in the web UI — they're saved in your OS keychain (macOS Keychain,
-     Windows Credential Manager, or Linux Secret Service).
-  2. Create profiles that map environment variable names to secrets.
-  3. Use "securevault run" to launch any command with those secrets injected as
-     environment variables. Secrets never touch disk or appear in shell history.
+KEY CONCEPTS:
+  - Secret: A named credential stored in the OS keychain (title, value, category). Created via web UI or API.
+  - Profile: A named set of mappings from environment variable names to secret IDs. Created via web UI or API.
+  - When you run "securevault run <cmd> --profile <name>", each mapping in the profile resolves the secret value from the keychain and sets it as an environment variable before spawning <cmd>.
 
-BACKEND API
-  http://localhost:3001/api/secrets    GET/POST/PUT/DELETE secrets
-  http://localhost:3001/api/profiles   GET/POST/PUT/DELETE profiles
-  http://localhost:3001/api/health     Health check
+REST API (requires backend running on localhost:3001):
+  GET    /api/secrets                  List all secrets (returns JSON array with id, title, category, value, notes, createdAt, updatedAt)
+  POST   /api/secrets                  Create secret. Body: {id, title, value, category, notes?, createdAt, updatedAt}
+  PUT    /api/secrets/:id              Update secret. Body: partial fields to update.
+  DELETE /api/secrets/:id              Delete secret. Returns 204.
+  GET    /api/profiles                 List all profiles (returns JSON array with id, name, mappings[], createdAt, updatedAt)
+  POST   /api/profiles                 Create profile. Body: {id, name, mappings: [{envVar, secretId}], createdAt, updatedAt}
+  PUT    /api/profiles/:id             Update profile. Body: partial fields to update.
+  DELETE /api/profiles/:id             Delete profile. Returns 204.
+  GET    /api/profiles/:id/resolve     Resolve profile: returns {profile: name, variables: {envVar: secretValue, ...}}
+  GET    /api/health                   Returns {status: "ok", service: "SecureVault Backend"}
+
+CATEGORIES (for secret creation): password, api-key, token, certificate, note, other
+
+OUTPUT FORMAT: All API responses are JSON. CLI commands print human-readable text to stdout.
 `.trim());
 }
 
