@@ -74,15 +74,20 @@ export async function runCommand(args) {
   // Build the child process environment
   const childEnv = { ...process.env, ...injectedEnv };
 
-  const [cmd, ...cmdArgs] = commandParts;
-
   const isWindows = process.platform === 'win32';
 
-  const child = spawn(cmd, cmdArgs, {
-    env: childEnv,
-    stdio: 'inherit',
-    shell: isWindows,
-  });
+  // On Windows, join command + args into a single shell string to avoid
+  // Node DEP0190 deprecation (passing args with shell: true)
+  const child = isWindows
+    ? spawn(commandParts.join(' '), [], {
+        env: childEnv,
+        stdio: 'inherit',
+        shell: true,
+      })
+    : spawn(commandParts[0], commandParts.slice(1), {
+        env: childEnv,
+        stdio: 'inherit',
+      });
 
   child.on('error', (err) => {
     console.error(`Error: Failed to start command "${commandParts.join(' ')}": ${err.message}`);
