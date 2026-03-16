@@ -15,6 +15,7 @@ function printHelp() {
   console.log(`
 TOOL: SecureVault v${VERSION}
 PURPOSE: Secure secret manager. Stores secrets in the OS keychain. Injects secrets as environment variables into any command via profiles.
+SECURITY: Secret values are NEVER returned in API list responses. An AI agent using this tool cannot read secret values — it can only inject them into processes via profiles.
 
 COMMANDS:
   securevault                              Start the web UI (frontend on :5000, API on :3001). Required before using API or web UI.
@@ -29,14 +30,16 @@ WORKFLOW FOR AI AGENTS:
   Step 2: Run "securevault list" to see available secrets.
   Step 3: Run "securevault profiles" to see available profiles and their env var mappings.
   Step 4: Run "securevault run <your-command> --profile <name>" to execute a command with secrets injected.
+  IMPORTANT: You do NOT need secret values. Use profiles to inject secrets into commands. The value is resolved from the OS keychain at runtime and never exposed to you.
 
 KEY CONCEPTS:
-  - Secret: A named credential stored in the OS keychain (title, value, category). Created via web UI or API.
+  - Secret: A named credential stored in the OS keychain (title, category). Created via web UI or API. Values are stored in the OS keychain and never returned in API responses.
   - Profile: A named set of mappings from environment variable names to secret IDs. Created via web UI or API.
   - When you run "securevault run <cmd> --profile <name>", each mapping in the profile resolves the secret value from the keychain and sets it as an environment variable before spawning <cmd>.
 
 REST API (requires backend running on localhost:3001):
-  GET    /api/secrets                  List all secrets (returns JSON array with id, title, category, value, notes, createdAt, updatedAt)
+  GET    /api/secrets                  List all secrets (returns JSON array with id, title, category, notes, createdAt, updatedAt — NO values)
+  GET    /api/secrets/:id/value        Get a single secret's value (for web UI only — returns {value: string})
   POST   /api/secrets                  Create secret. Body: {id, title, value, category, notes?, createdAt, updatedAt}
   PUT    /api/secrets/:id              Update secret. Body: partial fields to update.
   DELETE /api/secrets/:id              Delete secret. Returns 204.

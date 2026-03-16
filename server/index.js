@@ -108,36 +108,39 @@ const storage = {
   }
 };
 
-// Helper function to get all secrets with their values from keychain
-async function getAllSecrets() {
-  const secretPromises = secretsMetadata.map(async (meta) => {
-    try {
-      const value = await storage.getPassword(SERVICE_NAME, meta.id);
-      if (!value) {
-        return null;
-      }
-      return {
-        ...meta,
-        value: value
-      };
-    } catch (error) {
-      console.error(`Error getting secret ${meta.id}:`, error);
-      return null;
-    }
-  });
-
-  const secretsWithNulls = await Promise.all(secretPromises);
-  return secretsWithNulls.filter(Boolean);
+// Helper function to get all secrets metadata (WITHOUT values - values are never exposed in list)
+async function getAllSecretsMetadata() {
+  // Return metadata only - no keychain lookups needed
+  return secretsMetadata.map(meta => ({ ...meta }));
 }
 
 // GET /api/secrets - Get all secrets
 app.get('/api/secrets', async (req, res) => {
   try {
-    const secrets = await getAllSecrets();
+    const secrets = await getAllSecretsMetadata();
     res.json(secrets);
   } catch (error) {
     console.error('Error fetching secrets:', error);
     res.status(500).json({ error: 'Failed to fetch secrets' });
+  }
+});
+
+// GET /api/secrets/:id/value - Get a single secret's value (for web UI reveal/copy)
+app.get('/api/secrets/:id/value', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const meta = secretsMetadata.find(s => s.id === id);
+    if (!meta) {
+      return res.status(404).json({ error: 'Secret not found' });
+    }
+    const value = await storage.getPassword(SERVICE_NAME, id);
+    if (!value) {
+      return res.status(404).json({ error: 'Secret value not found in keychain' });
+    }
+    res.json({ value });
+  } catch (error) {
+    console.error('Error fetching secret value:', error);
+    res.status(500).json({ error: 'Failed to fetch secret value' });
   }
 });
 
@@ -199,7 +202,7 @@ app.post('/api/secrets', async (req, res) => {
       }
     }
     
-    res.status(201).json({ ...metadata, value });
+    res.status(201).json(metadata);
   } catch (error) {
     console.error('Error creating secret:', error);
     res.status(500).json({ error: 'Failed to create secret' });
@@ -277,7 +280,7 @@ app.put('/api/secrets/:id', async (req, res) => {
       }
     }
     
-    res.json({ ...secretsMetadata[metaIndex], value: secretValue });
+    res.json(secretsMetadata[metaIndex]);
   } catch (error) {
     console.error('Error updating secret:', error);
     res.status(500).json({ error: 'Failed to update secret' });
@@ -465,6 +468,8 @@ app.delete('/api/profiles/:id', (req, res) => {
 });
 
 // GET /api/profiles/:id/resolve - Resolve profile to env var → value pairs
+// WARNING: This endpoint exposes secret values. It is used by the CLI.
+// It should be protected with authentication in production.
 app.get('/api/profiles/:id/resolve', async (req, res) => {
   try {
     const { id } = req.params;
