@@ -54,13 +54,14 @@ export function ProfileGroup({
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-3 pl-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-3 pl-2 items-stretch">
               {secrets.map((secret, index) => (
                 <motion.div
                   key={secret.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.15, delay: index * 0.03 }}
+                  className="h-full"
                 >
                   <SecretCard
                     secret={secret}
