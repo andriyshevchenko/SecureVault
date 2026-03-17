@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Secret, SecretCategory, SecretFormData, Profile, ProfileFormData } from '@/lib/types'
 import { ApiClient } from '@/lib/api'
 import { Plus } from '@phosphor-icons/react'
@@ -9,6 +9,7 @@ import { SecretCard } from '@/components/SecretCard'
 import { SecretDialog } from '@/components/SecretDialog'
 import { ProfileCard } from '@/components/ProfileCard'
 import { ProfileDialog } from '@/components/ProfileDialog'
+import { ProfileGroup } from '@/components/ProfileGroup'
 import { EmptyState } from '@/components/EmptyState'
 import { CategoryFilter } from '@/components/CategoryFilter'
 import { Toaster } from '@/components/ui/sonner'
@@ -176,6 +177,44 @@ function App() {
     return matchesSearch && matchesCategory
   })
 
+  // Group filtered secrets by profile
+  const { groupedSecrets, ungroupedSecrets } = useMemo(() => {
+    // Build a map of secretId -> profileIds
+    const secretToProfiles = new Map<string, string[]>()
+    for (const profile of profiles) {
+      for (const mapping of profile.mappings) {
+        const existing = secretToProfiles.get(mapping.secretId) || []
+        existing.push(profile.id)
+        secretToProfiles.set(mapping.secretId, existing)
+      }
+    }
+
+    // Collect secret IDs that belong to at least one profile
+    const assignedSecretIds = new Set(secretToProfiles.keys())
+
+    // Group filtered secrets by their first profile
+    const groups: { profile: Profile; secrets: Secret[] }[] = []
+    const usedSecretIds = new Set<string>()
+
+    for (const profile of profiles) {
+      const profileSecretIds = new Set(profile.mappings.map(m => m.secretId))
+      const profileSecrets = filteredSecrets.filter(
+        s => profileSecretIds.has(s.id) && !usedSecretIds.has(s.id)
+      )
+      if (profileSecrets.length > 0) {
+        groups.push({ profile, secrets: profileSecrets })
+        profileSecrets.forEach(s => usedSecretIds.add(s.id))
+      }
+    }
+
+    // Ungrouped = filtered secrets not assigned to any profile
+    const ungrouped = filteredSecrets.filter(s => !assignedSecretIds.has(s.id))
+
+    return { groupedSecrets: groups, ungroupedSecrets: ungrouped }
+  }, [filteredSecrets, profiles])
+
+  const hasGroups = groupedSecrets.length > 0
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
@@ -300,6 +339,53 @@ function App() {
                   hasSecrets={secrets.length > 0}
                   onAddSecret={() => setIsDialogOpen(true)}
                 />
+              ) : hasGroups ? (
+                <div>
+                  {/* Ungrouped secrets first */}
+                  {ungroupedSecrets.length > 0 && (
+                    <div className="mb-6">
+                      <div className="px-4 py-2 mb-3">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Ungrouped
+                        </span>
+                      </div>
+                      <motion.div
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                        layout
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {ungroupedSecrets.map((secret, index) => (
+                            <motion.div
+                              key={secret.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              transition={{ duration: 0.2, delay: index * 0.03 }}
+                              layout
+                            >
+                              <SecretCard
+                                secret={secret}
+                                onEdit={handleOpenEdit}
+                                onDelete={handleDeleteSecret}
+                              />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </motion.div>
+                    </div>
+                  )}
+
+                  {/* Profile groups */}
+                  {groupedSecrets.map(({ profile, secrets: profileSecrets }) => (
+                    <ProfileGroup
+                      key={profile.id}
+                      profile={profile}
+                      secrets={profileSecrets}
+                      onEditSecret={handleOpenEdit}
+                      onDeleteSecret={handleDeleteSecret}
+                    />
+                  ))}
+                </div>
               ) : (
                 <motion.div
                   className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
