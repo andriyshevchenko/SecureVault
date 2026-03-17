@@ -88,7 +88,7 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
 
   return (
     <>
-      <Card className="group overflow-hidden bg-card/50 border-border/50 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200">
+      <Card className="group overflow-hidden bg-card/50 border-border/50 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200 h-full flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2 overflow-hidden">
             <CardTitle className="text-lg font-semibold tracking-tight truncate min-w-0 flex-1">
@@ -102,7 +102,7 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 flex-1 flex flex-col">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-muted/30 rounded px-3 py-2 font-mono text-sm overflow-hidden flex items-center min-h-[36px]">
@@ -145,7 +145,7 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
             )}
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border/30">
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 mt-auto">
             <span className="text-xs text-muted-foreground">
               {new Date(secret.updatedAt).toLocaleDateString()}
             </span>
