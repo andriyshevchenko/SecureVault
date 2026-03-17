@@ -2,8 +2,8 @@
 
 import { spawn } from 'child_process';
 import keytar from 'keytar';
-import { fileURLToPath } from 'url';
 import { resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { loadProfiles } from '../server/profileStore.js';
 
 const SERVICE_NAME = 'SecureVault';
@@ -80,14 +80,14 @@ export async function runCommand(args) {
   // Node DEP0190 deprecation (passing args with shell: true)
   const child = isWindows
     ? spawn(commandParts.join(' '), [], {
-        env: childEnv,
-        stdio: 'inherit',
-        shell: true,
-      })
+      env: childEnv,
+      stdio: 'inherit',
+      shell: true,
+    })
     : spawn(commandParts[0], commandParts.slice(1), {
-        env: childEnv,
-        stdio: 'inherit',
-      });
+      env: childEnv,
+      stdio: 'inherit',
+    });
 
   // Return a promise that resolves with exit code when the child finishes
   return new Promise((resolve, reject) => {
