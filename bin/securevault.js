@@ -155,7 +155,8 @@ console.log('🔒 Starting SecureVault...\n');
 console.log('Starting backend API server on http://localhost:3001...');
 const backendProcess = spawn('node', [join(rootDir, 'server', 'index.js')], {
   stdio: 'inherit',
-  cwd: rootDir
+  cwd: rootDir,
+  shell: true
 });
 
 // Wait a bit for backend to start
@@ -164,7 +165,8 @@ setTimeout(() => {
   console.log('Starting frontend server on http://localhost:5000...');
   const frontendProcess = spawn('npx', ['http-server', join(rootDir, 'dist'), '-p', '5000', '-c-1', '--silent'], {
     stdio: 'inherit',
-    cwd: rootDir
+    cwd: rootDir,
+    shell: true
   });
 
   // Open browser after a short delay
