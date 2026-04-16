@@ -3,7 +3,7 @@ package securevault_test
 import (
 	"testing"
 
-	sv "github.com/andriyshevchenko/sandboxed-ui/securevault-go"
+	sv "github.com/andriyshevchenko/SecureVault/securevault-go"
 )
 
 func TestCredentialTarget(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/andriyshevchenko/sandboxed-ui/securevault-go
+module github.com/andriyshevchenko/SecureVault/securevault-go
 
 go 1.22
 

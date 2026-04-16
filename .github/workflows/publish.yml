@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    # This workflow is npm-only and intentionally ignores Go module tags
+    # like securevault-go/v0.1.0.
+    tags-ignore:
+      - 'securevault-go/v*'
     paths:
       - 'package.json'
   workflow_dispatch:

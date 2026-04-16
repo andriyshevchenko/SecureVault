@@ -5,9 +5,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
-	sv "github.com/andriyshevchenko/sandboxed-ui/securevault-go"
+	sv "github.com/andriyshevchenko/SecureVault/securevault-go"
 )
 
 // resolveTestProfiles writes a profile JSON fixture and returns a Store pointing at it.
@@ -35,6 +36,10 @@ func TestResolveProfile_NotFound(t *testing.T) {
 }
 
 func TestResolveProfile_MissingCredentialsSkipped(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("ResolveProfile returns ErrUnsupportedPlatform on non-Windows")
+	}
+
 	// Credentials are not in the real store; GetSecretValue returns ErrNotFound.
 	// ResolveProfile must return an empty map, not an error.
 	store := resolveTestStore(t, []sv.Profile{
@@ -52,9 +57,23 @@ func TestResolveProfile_MissingCredentialsSkipped(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	// On Windows with missing creds, result should be empty but not nil.
-	// On non-Windows it also returns empty because GetSecretValue returns ErrUnsupportedPlatform.
 	if result == nil {
 		t.Fatal("expected non-nil map")
+	}
+}
+
+func TestResolveProfile_UnsupportedPlatform(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("non-Windows-only behavior")
+	}
+
+	store := resolveTestStore(t, []sv.Profile{
+		{ID: "p1", Name: "TEST", Mappings: []sv.ProfileMapping{{EnvVar: "FOO", SecretID: "s1"}}},
+	})
+
+	_, err := store.ResolveProfile("TEST")
+	if !errors.Is(err, sv.ErrUnsupportedPlatform) {
+		t.Fatalf("want ErrUnsupportedPlatform, got %v", err)
 	}
 }
 
@@ -67,12 +86,31 @@ func TestResolveKey_ProfileNotFound(t *testing.T) {
 }
 
 func TestResolveKey_EnvVarNotFound(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("ResolveKey returns ErrUnsupportedPlatform on non-Windows")
+	}
+
 	store := resolveTestStore(t, []sv.Profile{
 		{ID: "p1", Name: "SENSORIUM", Mappings: []sv.ProfileMapping{{EnvVar: "FOO", SecretID: "s1"}}},
 	})
 	_, err := store.ResolveKey("SENSORIUM", "NONEXISTENT_KEY")
 	if !errors.Is(err, sv.ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}
+
+func TestResolveKey_UnsupportedPlatform(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("non-Windows-only behavior")
+	}
+
+	store := resolveTestStore(t, []sv.Profile{
+		{ID: "p1", Name: "SENSORIUM", Mappings: []sv.ProfileMapping{{EnvVar: "FOO", SecretID: "s1"}}},
+	})
+
+	_, err := store.ResolveKey("SENSORIUM", "FOO")
+	if !errors.Is(err, sv.ErrUnsupportedPlatform) {
+		t.Fatalf("want ErrUnsupportedPlatform, got %v", err)
 	}
 }
 
@@ -91,7 +129,7 @@ func TestResolveProfile_EmptyMappings(t *testing.T) {
 
 func TestGetSecretValue_UnsupportedPlatform(t *testing.T) {
 	// On non-Windows GetSecretValue must return ErrUnsupportedPlatform.
-	// On Windows this test documents the expected behaviour of the other.go stub.
+	// On Windows this call may return ErrNotFound when the credential is absent.
 	_, err := sv.GetSecretValue("any-secret-id")
 	if err == nil {
 		// Windows: credential simply may not exist — acceptable for this unit test.

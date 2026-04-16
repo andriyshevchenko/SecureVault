@@ -171,9 +171,16 @@ func CredentialTarget(secretID string) string {
 
 // ResolveProfile loads the named profile and resolves each env-var mapping to its
 // secret value from Windows Credential Manager. Secrets missing from the credential
-// store are silently skipped (matching server behaviour). Returns an error only when
-// profile file I/O fails or the named profile does not exist.
+// store are silently skipped (matching server behaviour).
+//
+// On non-Windows platforms, ResolveProfile returns ErrUnsupportedPlatform.
+// On Windows, it returns an error only when profile file I/O fails or the named
+// profile does not exist.
 func (s *Store) ResolveProfile(profileName string) (map[string]string, error) {
+	if runtime.GOOS != "windows" {
+		return nil, ErrUnsupportedPlatform
+	}
+
 	profiles, err := s.LoadProfiles()
 	if err != nil {
 		return nil, err
@@ -195,7 +202,7 @@ func (s *Store) ResolveProfile(profileName string) (map[string]string, error) {
 		if err != nil {
 			// Silently skip only expected "not present" cases.
 			// Unexpected errors (permission failures, corrupted state, etc.) are returned.
-			if errors.Is(err, ErrNotFound) || errors.Is(err, ErrUnsupportedPlatform) {
+			if errors.Is(err, ErrNotFound) {
 				continue
 			}
 			return nil, err
@@ -207,8 +214,12 @@ func (s *Store) ResolveProfile(profileName string) (map[string]string, error) {
 
 // ResolveKey returns the secret value for a single env-var key within a named profile.
 // Returns ErrNotFound if the profile, the env-var mapping, or the credential does not exist.
-// Returns ErrUnsupportedPlatform on non-Windows systems.
+// On non-Windows platforms, ResolveKey returns ErrUnsupportedPlatform.
 func (s *Store) ResolveKey(profileName, envVar string) (string, error) {
+	if runtime.GOOS != "windows" {
+		return "", ErrUnsupportedPlatform
+	}
+
 	profiles, err := s.LoadProfiles()
 	if err != nil {
 		return "", err
