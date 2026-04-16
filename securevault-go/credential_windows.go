@@ -31,7 +31,7 @@ type credential struct {
 var (
 	modAdvapi32  = windows.NewLazySystemDLL("advapi32.dll")
 	procCredRead = modAdvapi32.NewProc("CredReadW")
-	procCredFree = modAdvapi32.NewProc("CredFreeW")
+	procCredFree = modAdvapi32.NewProc("CredFree")
 )
 
 const credTypeGeneric = 1
