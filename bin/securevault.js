@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
-const VERSION = '1.2.2';
+const VERSION = '1.2.3';
 
 function printHelp() {
   console.log(`
@@ -18,7 +18,7 @@ PURPOSE: Secure secret manager. Stores secrets in the OS keychain. Injects secre
 SECURITY: Secret values are NEVER returned in API list responses. An AI agent using this tool cannot read secret values — it can only inject them into processes via profiles.
 
 COMMANDS:
-  securevault                              Start the web UI (frontend on :5000, API on :3001). Required before using API or web UI.
+  securevault [--no-open]                   Start the web UI (frontend on :5000, API on :3001). Use --no-open to skip opening the browser.
   securevault run <command> --profile <name>  Execute <command> with secrets from <name> profile injected as environment variables.
   securevault health                        Returns OK if the backend API (port 3001) is reachable. Use this to check before calling other commands.
   securevault list                          Print all stored secret titles, categories, and dates. Does NOT print secret values.
@@ -117,7 +117,8 @@ async function listProfiles() {
 
 // Check for subcommands
 const args = process.argv.slice(2);
-const cmd = args[0];
+const noOpen = args.includes('--no-open');
+const cmd = args.find(a => !a.startsWith('--'));
 
 if (cmd === 'help' || cmd === '--help' || cmd === '-h') {
   printHelp();
@@ -174,10 +175,14 @@ setTimeout(() => {
     console.log('\n✅ SecureVault is running!');
     console.log('   Frontend: http://localhost:5000');
     console.log('   Backend API: http://localhost:3001');
-    console.log('\n   Opening browser...\n');
-    open('http://localhost:5000').catch(() => {
-      console.log('   Could not open browser automatically. Please open http://localhost:5000 manually.');
-    });
+    if (!noOpen) {
+      console.log('\n   Opening browser...\n');
+      open('http://localhost:5000').catch(() => {
+        console.log('   Could not open browser automatically. Please open http://localhost:5000 manually.');
+      });
+    } else {
+      console.log('\n   Browser auto-open disabled (--no-open)\n');
+    }
   }, 2000);
 
   // Handle process termination
