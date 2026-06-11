@@ -1,7 +1,7 @@
 {
     "name": "@mcborov01/securevault",
     "private": false,
-    "version": "1.2.3",
+    "version": "1.2.4",
     "type": "module",
     "description": "Secure secret manager with OS keychain integration - runs locally on your machine",
     "keywords": [
@@ -91,7 +91,6 @@
         "marked": "^15.0.7",
         "next-themes": "^0.4.6",
         "octokit": "^4.1.2",
-        "open": "^10.1.0",
         "playwright": "^1.58.2",
         "react": "^19.0.0",
         "react-day-picker": "^9.6.7",
