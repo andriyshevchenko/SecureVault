@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'child_process';
+import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
-const VERSION = '1.2.3';
+const VERSION = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf8')).version;
 
 function printHelp() {
   console.log(`
@@ -56,20 +57,47 @@ OUTPUT FORMAT: All API responses are JSON. CLI commands print human-readable tex
 }
 
 async function checkHealth() {
+  // Core functionality — what `securevault run` actually needs: the OS
+  // keychain and the local profiles.json. Neither requires the backend or
+  // frontend servers, which only exist to power the web UI (creating/editing
+  // secrets and profiles in the browser, and the `list`/`profiles` commands).
+  let coreOk = true;
+
+  try {
+    const keytar = (await import('keytar')).default;
+    // Harmless lookup: returns null for a nonexistent entry, never throws
+    // just because the credential is absent — only on real keychain failures.
+    await keytar.getPassword('SecureVault', '__securevault_health_check__');
+    console.log('✅ OS keychain is accessible and will be used for secure storage');
+  } catch (err) {
+    coreOk = false;
+    console.error(`❌ OS keychain check failed: ${err.message}`);
+  }
+
+  try {
+    const { loadProfiles } = await import('../server/profileStore.js');
+    const profiles = await loadProfiles();
+    console.log(`✅ Profiles store is readable (${profiles.length} profile(s))`);
+  } catch (err) {
+    coreOk = false;
+    console.error(`❌ Profiles store check failed: ${err.message}`);
+  }
+
+  // Web UI backend — informational only. `securevault run` never talks to
+  // it, so a down backend must not make health report a failure.
   try {
     const res = await fetch('http://localhost:3001/api/health');
     if (res.ok) {
       const data = await res.json();
-      console.log(`✅ ${data.service} is running (status: ${data.status})`);
-      process.exit(0);
+      console.log(`✅ Web UI backend is running (status: ${data.status})`);
     } else {
-      console.error(`❌ Backend returned HTTP ${res.status}`);
-      process.exit(1);
+      console.log(`ℹ️  Web UI backend returned HTTP ${res.status} (only needed for 'list'/'profiles'/the browser UI, not for 'run')`);
     }
   } catch {
-    console.error('❌ Backend is not running. Start it with: securevault');
-    process.exit(1);
+    console.log("ℹ️  Web UI backend is not running (only needed for 'list'/'profiles'/the browser UI, not for 'run'). Start it with: securevault");
   }
+
+  process.exit(coreOk ? 0 : 1);
 }
 
 async function listSecrets() {
@@ -116,17 +144,21 @@ async function listProfiles() {
 
 // Check for subcommands
 const args = process.argv.slice(2);
-const cmd = args.find(a => !a.startsWith('--'));
 
-if (cmd === 'help' || cmd === '--help' || cmd === '-h') {
+// Checked directly against the raw args (not the `cmd` filter below, which
+// deliberately excludes anything starting with "--" and previously made
+// "--help"/"--version" fall through to starting the whole server).
+if (args.includes('--help') || args.includes('-h') || args.includes('help')) {
   printHelp();
   process.exit(0);
 }
 
-if (cmd === '--version' || cmd === '-v') {
+if (args.includes('--version') || args.includes('-v')) {
   console.log(`SecureVault v${VERSION}`);
   process.exit(0);
 }
+
+const cmd = args.find(a => !a.startsWith('--'));
 
 if (cmd === 'run') {
   const { runCommand } = await import('./run.js');
@@ -136,6 +168,7 @@ if (cmd === 'run') {
 
 if (cmd === 'health') {
   await checkHealth();
+  process.exit(0); // defensive: checkHealth() always exits itself, but never fall through to server-start if that ever changes
 }
 
 if (cmd === 'list') {
