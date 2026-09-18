@@ -2,6 +2,7 @@
 
 import { spawn } from 'child_process';
 import { readFileSync } from 'fs';
+import { createServer } from 'net';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -183,6 +184,56 @@ if (cmd === 'profiles') {
 
 console.log('🔒 Starting SecureVault...\n');
 
+// Fail early with a clear message if a port is taken (e.g. SecureVault already
+// running), instead of letting a child crash with a raw EADDRINUSE stack trace.
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const tester = createServer()
+      .once('error', () => resolve(false))
+      .once('listening', () => tester.close(() => resolve(true)))
+      .listen(port, '127.0.0.1');
+  });
+}
+
+for (const port of [3001, 5000]) {
+  if (!(await isPortFree(port))) {
+    console.error(`❌ Port ${port} is already in use. Is SecureVault already running?`);
+    console.error('   Stop the other instance (or free the port), then try again.');
+    process.exit(1);
+  }
+}
+
+// Poll a URL until it responds (any HTTP reply means the server is listening)
+// or we hit the timeout. Used so we only report "running" once servers are up.
+async function waitForServer(url, { timeoutMs = 20000, intervalMs = 250 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await fetch(url);
+      return true;
+    } catch {
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+  }
+  return false;
+}
+
+// On Windows, spawning with shell:true wraps the process in cmd.exe, so a plain
+// child.kill() only kills the shell and leaves node/http-server orphaned holding
+// their ports. Kill the whole tree instead.
+function killTree(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === 'win32' && child.pid) {
+    try {
+      spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+      return;
+    } catch {
+      // fall through to child.kill()
+    }
+  }
+  child.kill();
+}
+
 // Start backend server
 console.log('Starting backend API server on http://localhost:3001...');
 const backendProcess = spawn('node', [join(rootDir, 'server', 'index.js')], {
@@ -191,47 +242,60 @@ const backendProcess = spawn('node', [join(rootDir, 'server', 'index.js')], {
   shell: true
 });
 
-// Wait a bit for backend to start
-setTimeout(() => {
-  // Start frontend server
-  console.log('Starting frontend server on http://localhost:5000...');
-  const frontendProcess = spawn('npx', ['http-server', join(rootDir, 'dist'), '-p', '5000', '-c-1', '--silent'], {
-    stdio: 'inherit',
-    cwd: rootDir,
-    shell: true
-  });
-
-  // Open browser after a short delay
-  setTimeout(() => {
-    console.log('\n✅ SecureVault is running!');
-    console.log('   Frontend: http://localhost:5000');
-    console.log('   Backend API: http://localhost:3001');
-    console.log('');
-  }, 2000);
-
-  // Handle process termination
-  const cleanup = () => {
-    console.log('\n\n🛑 Shutting down SecureVault...');
-    backendProcess.kill();
-    frontendProcess.kill();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
-
-  frontendProcess.on('exit', () => {
-    backendProcess.kill();
-    process.exit(0);
-  });
-
-  backendProcess.on('exit', () => {
-    frontendProcess.kill();
-    process.exit(0);
-  });
-}, 2000);
-
 backendProcess.on('error', (err) => {
   console.error('Failed to start backend:', err);
   process.exit(1);
 });
+
+// Start frontend server
+console.log('Starting frontend server on http://localhost:5000...');
+const frontendProcess = spawn('npx', ['http-server', join(rootDir, 'dist'), '-p', '5000', '-c-1', '--silent'], {
+  stdio: 'inherit',
+  cwd: rootDir,
+  shell: true
+});
+
+frontendProcess.on('error', (err) => {
+  console.error('Failed to start frontend:', err);
+  killTree(backendProcess);
+  process.exit(1);
+});
+
+// Handle process termination
+const cleanup = () => {
+  console.log('\n\n🛑 Shutting down SecureVault...');
+  killTree(backendProcess);
+  killTree(frontendProcess);
+  process.exit(0);
+};
+
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+
+frontendProcess.on('exit', () => {
+  killTree(backendProcess);
+  process.exit(0);
+});
+
+backendProcess.on('exit', () => {
+  killTree(frontendProcess);
+  process.exit(0);
+});
+
+// Only tell the user it's ready once both servers actually respond.
+console.log('Waiting for servers to become ready...');
+const backendReady = await waitForServer('http://localhost:3001/api/health');
+const frontendReady = await waitForServer('http://localhost:5000/');
+
+if (backendReady && frontendReady) {
+  console.log('\n✅ SecureVault is running!');
+  console.log('   Frontend:    http://localhost:5000');
+  console.log('   Backend API: http://localhost:3001');
+  console.log('');
+} else {
+  console.log('\n⚠️  SecureVault started, but a server did not become ready in time:');
+  console.log(`   Backend API (http://localhost:3001): ${backendReady ? 'ready' : 'not responding'}`);
+  console.log(`   Frontend (http://localhost:5000):    ${frontendReady ? 'ready' : 'not responding'}`);
+  console.log('   Give it a few more seconds, or check the output above for errors.');
+  console.log('');
+}

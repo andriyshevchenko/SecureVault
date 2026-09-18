@@ -58,6 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added validation for loaded metadata to handle corrupted files gracefully
 - Extracted persistence functions to separate module for better testability
 
+## [2.0.2] - 2026-09-18
+
+### Fixed
+- The `securevault` dashboard launcher now waits until the backend and frontend actually respond before printing "SecureVault is running", instead of printing it after a fixed delay while the site was still starting up.
+- A busy port now produces a clear "port already in use" message and a non-zero exit, instead of a raw `EADDRINUSE` stack trace.
+- Shutdown now terminates the whole child process tree on Windows, so the backend and static server no longer orphan and keep holding their ports after exit.
+
 ## [2.0.1] - 2026-09-18
 
 ### Security
