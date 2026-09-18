@@ -30,7 +30,6 @@
         "server:dev": "node --watch server/index.js",
         "start": "node bin/securevault.js",
         "build": "vite build",
-        "prepare": "npm run build",
         "lint": "eslint .",
         "test": "vitest run",
         "test:watch": "vitest",
