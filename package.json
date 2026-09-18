@@ -1,7 +1,7 @@
 {
     "name": "@mcborov01/securevault",
     "private": false,
-    "version": "1.2.6",
+    "version": "2.0.0",
     "type": "module",
     "description": "Secure secret manager with OS keychain integration - runs locally on your machine",
     "keywords": [
@@ -15,7 +15,7 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/andriyshevchenko/sandboxed-ui.git"
+        "url": "https://github.com/andriyshevchenko/SecureVault.git"
     },
     "bin": {
         "securevault": "./bin/securevault.js"
@@ -79,6 +79,7 @@
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
         "cors": "^2.8.5",
+        "cross-spawn": "^7.0.6",
         "d3": "^7.9.0",
         "date-fns": "^3.6.0",
         "embla-carousel-react": "^8.5.2",
@@ -142,7 +143,10 @@
     },
     "files": [
         "dist",
-        "server",
+        "server/index.js",
+        "server/metadataStore.js",
+        "server/profileStore.js",
+        "server/jsonStore.js",
         "bin",
         "README.md",
         "LICENSE"

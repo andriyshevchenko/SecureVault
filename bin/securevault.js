@@ -15,11 +15,13 @@ function printHelp() {
   console.log(`
 TOOL: SecureVault v${VERSION}
 PURPOSE: Secure secret manager. Stores secrets in the OS keychain. Injects secrets as environment variables into any command via profiles.
-SECURITY: Secret values are NEVER returned in API list responses. An AI agent using this tool cannot read secret values — it can only inject them into processes via profiles.
+SECURITY: Raw secret values are NEVER returned by any API endpoint. Secret values leave the OS keychain only when injected into a command via "securevault run --profile". An AI agent using this tool cannot read secret values — it can only inject them into processes via profiles.
 
 COMMANDS:
   securevault                               Start the web UI (frontend on :5000, API on :3001).
   securevault run <command> --profile <name>  Execute <command> with secrets from <name> profile injected as environment variables.
+                                            Use "--" before <command> (securevault run --profile <name> -- <command>) so the command keeps its own flags.
+                                            Add "--detach" to launch the command in the background and return immediately.
   securevault health                        Returns OK if the backend API (port 3001) is reachable. Use this to check before calling other commands.
   securevault list                          Print all stored secret titles, categories, and dates. Does NOT print secret values.
   securevault profiles                      Print all profiles with their environment variable mappings.
@@ -38,8 +40,7 @@ KEY CONCEPTS:
   - When you run "securevault run <cmd> --profile <name>", each mapping in the profile resolves the secret value from the keychain and sets it as an environment variable before spawning <cmd>.
 
 REST API (requires backend running on localhost:3001):
-  GET    /api/secrets                  List all secrets (returns JSON array with id, title, category, notes, createdAt, updatedAt — NO values)
-  GET    /api/secrets/:id/value        Get a single secret's value (for web UI only — returns {value: string})
+  GET    /api/secrets                  List all secrets (returns JSON array with id, title, category, notes, preview, createdAt, updatedAt — NO raw values)
   POST   /api/secrets                  Create secret. Body: {id, title, value, category, notes?, createdAt, updatedAt}
   PUT    /api/secrets/:id              Update secret. Body: partial fields to update.
   DELETE /api/secrets/:id              Delete secret. Returns 204.
@@ -47,7 +48,6 @@ REST API (requires backend running on localhost:3001):
   POST   /api/profiles                 Create profile. Body: {id, name, mappings: [{envVar, secretId}], createdAt, updatedAt}
   PUT    /api/profiles/:id             Update profile. Body: partial fields to update.
   DELETE /api/profiles/:id             Delete profile. Returns 204.
-  GET    /api/profiles/:id/resolve     Resolve profile: returns {profile: name, variables: {envVar: secretValue, ...}}
   GET    /api/health                   Returns {status: "ok", service: "SecureVault Backend"}
 
 CATEGORIES (for secret creation): password, api-key, token, certificate, note, other

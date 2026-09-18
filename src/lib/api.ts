@@ -38,11 +38,6 @@ export class ApiClient {
     return this.request<Secret[]>('/secrets')
   }
 
-  static async getSecretValue(id: string): Promise<string> {
-    const data = await this.request<{ value: string }>(`/secrets/${id}/value`)
-    return data.value
-  }
-
   static async createSecret(data: SecretFormData & { id: string; createdAt: number; updatedAt: number }): Promise<Secret> {
     return this.request<Secret>('/secrets', {
       method: 'POST',
@@ -50,7 +45,7 @@ export class ApiClient {
     })
   }
 
-  static async updateSecret(id: string, data: SecretFormData & { updatedAt: number }): Promise<Secret> {
+  static async updateSecret(id: string, data: Omit<SecretFormData, 'value'> & { value?: string; updatedAt: number }): Promise<Secret> {
     return this.request<Secret>(`/secrets/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

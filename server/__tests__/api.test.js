@@ -6,6 +6,14 @@ import cors from 'cors';
 // Valid secret categories - shared constant to match server
 const VALID_CATEGORIES = ['password', 'api-key', 'token', 'certificate', 'note', 'other'];
 
+// Mirrors the server's write-time preview policy.
+const PREVIEW_PREFIX_LEN = 4;
+const PREVIEW_MIN_LENGTH = 12;
+function computePreview(value) {
+  if (typeof value !== 'string' || value.length < PREVIEW_MIN_LENGTH) return '';
+  return value.slice(0, PREVIEW_PREFIX_LEN);
+}
+
 // Mock keytar
 const mockKeytar = {
   setPassword: jest.fn().mockResolvedValue(undefined),
@@ -59,28 +67,10 @@ describe('SecureVault API', () => {
       }
     };
 
-    // GET /api/secrets
+    // GET /api/secrets — metadata only, raw values are never returned
     app.get('/api/secrets', async (req, res) => {
       try {
-        const secretPromises = secretsMetadata.map(async (meta) => {
-          try {
-            const value = await storage.getPassword('SecureVault', meta.id);
-            if (!value) {
-              return null;
-            }
-            return {
-              ...meta,
-              value: value
-            };
-          } catch (error) {
-            console.error(`Error getting secret ${meta.id}:`, error);
-            return null;
-          }
-        });
-
-        const secretsWithNulls = await Promise.all(secretPromises);
-        const secrets = secretsWithNulls.filter(Boolean);
-        res.json(secrets);
+        res.json(secretsMetadata.map(meta => ({ ...meta })));
       } catch (error) {
         res.status(500).json({ error: 'Failed to fetch secrets' });
       }
@@ -122,10 +112,10 @@ describe('SecureVault API', () => {
         }
 
         await storage.setPassword('SecureVault', id, value);
-        const metadata = { id, title: title.trim(), category, notes, createdAt, updatedAt };
+        const metadata = { id, title: title.trim(), category, notes, preview: computePreview(value), createdAt, updatedAt };
         secretsMetadata.push(metadata);
-        
-        res.status(201).json({ ...metadata, value });
+
+        res.status(201).json(metadata);
       } catch (error) {
         res.status(500).json({ error: 'Failed to create secret' });
       }
@@ -158,10 +148,7 @@ describe('SecureVault API', () => {
         }
         
         const existingMeta = secretsMetadata[metaIndex];
-        
-        // Get current secret value
-        let secretValue = await storage.getPassword('SecureVault', id);
-        
+
         // Update the secret value in keychain only if a new value is provided
         if (value !== undefined) {
           if (value === null || value === '') {
@@ -171,19 +158,19 @@ describe('SecureVault API', () => {
             return res.status(400).json({ error: 'Secret value must be a string' });
           }
           await storage.setPassword('SecureVault', id, value);
-          secretValue = value;
         }
-        
+
         // Update metadata, preserving existing fields when omitted
         secretsMetadata[metaIndex] = {
           ...existingMeta,
           title: title !== undefined ? title.trim() : existingMeta.title,
           category: category !== undefined ? category : existingMeta.category,
           notes: notes !== undefined ? notes : existingMeta.notes,
+          preview: value !== undefined ? computePreview(value) : existingMeta.preview,
           updatedAt: updatedAt !== undefined ? updatedAt : existingMeta.updatedAt
         };
-        
-        res.json({ ...secretsMetadata[metaIndex], value: secretValue });
+
+        res.json(secretsMetadata[metaIndex]);
       } catch (error) {
         res.status(500).json({ error: 'Failed to update secret' });
       }
@@ -254,6 +241,39 @@ describe('SecureVault API', () => {
       });
     });
 
+    it('should never return the raw value and should include a preview', async () => {
+      const secret = {
+        id: 'preview-test-id',
+        title: 'Preview Secret',
+        value: 'sk-proj-abcdef123456',
+        category: 'api-key',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      const response = await request(app).post('/api/secrets').send(secret);
+
+      expect(response.status).toBe(201);
+      expect(response.body).not.toHaveProperty('value');
+      expect(response.body.preview).toBe('sk-p');
+    });
+
+    it('should not include a preview for short secrets', async () => {
+      const secret = {
+        id: 'short-secret-id',
+        title: 'Short',
+        value: 'short',
+        category: 'password',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      const response = await request(app).post('/api/secrets').send(secret);
+
+      expect(response.status).toBe(201);
+      expect(response.body.preview).toBe('');
+    });
+
     it('should return 400 if required fields are missing', async () => {
       const response = await request(app)
         .post('/api/secrets')
@@ -300,6 +320,15 @@ describe('SecureVault API', () => {
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
+    });
+
+    it('should never include raw values', async () => {
+      const response = await request(app).get('/api/secrets');
+
+      expect(response.status).toBe(200);
+      for (const s of response.body) {
+        expect(s).not.toHaveProperty('value');
+      }
     });
   });
 
@@ -386,7 +415,8 @@ describe('SecureVault API', () => {
       expect(response.body.title).toBe('Updated Title');
       expect(response.body.category).toBe(newSecret.category);
       expect(response.body.notes).toBe(newSecret.notes);
-      expect(response.body.value).toBe(newSecret.value); // Value should be preserved
+      expect(response.body).not.toHaveProperty('value'); // Raw value is never returned
+      expect(response.body.preview).toBe('orig'); // Preview preserved from 'original-value'
     });
   });
 

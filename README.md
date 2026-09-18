@@ -26,9 +26,11 @@ Opens at `http://localhost:5000`.
 ```bash
 securevault                    # Start the web UI + API server
 securevault run <cmd> --profile <name>  # Run command with secrets as env vars
+securevault run --profile <name> -- <cmd>  # Use -- so <cmd> keeps its own flags
+securevault run <cmd> --profile <name> --detach  # Launch detached, return immediately
 securevault list               # List all stored secrets
 securevault profiles           # List all environment profiles
-securevault health             # Check if the backend is running
+securevault health             # Check keychain access and the backend
 securevault --help             # Show help
 securevault --version          # Show version
 ```
@@ -55,27 +57,26 @@ SecureVault fetches secret values from the OS keychain at runtime and injects th
 - **Modern UI** — React + Tailwind CSS with Framer Motion animations
 - **Categories** — Password, API Key, Token, Certificate, Note, Other
 - **Search & Filter** — Find secrets by name or category
-- **Zero-Trust API** — Secret values are never returned in list endpoints; fetched individually on explicit request
-- **Copy to Clipboard** — One-click copy with visual feedback
+- **Values never leave the keychain** — The API never returns raw secret values; the UI shows only a short prefix so you can verify the right secret is stored
 - **Single Package** — No Docker, no external services
 
 ## Security Model
 
 - Secret values stored in OS keychain via `keytar`
-- `GET /api/secrets` returns metadata only — **values are never included**
-- Values fetched individually via `GET /api/secrets/:id/value` only when explicitly requested
-- Backend listens on `localhost:3001` only (not exposed to network)
+- **Raw secret values are never returned by the API** — not by list endpoints, not by any endpoint
+- The web UI shows only a short prefix (first few characters, and only for sufficiently long secrets) for verification; the value's length is not exposed
+- Secret values leave the keychain only at `securevault run` time, injected as environment variables into the child process
+- The OS keychain is **mandatory** — SecureVault refuses to run if it is unavailable (no insecure in-memory fallback)
+- Backend listens on `localhost:3001` only (not exposed to the network)
 - CORS restricted to localhost frontend origins
 - Request body size limited
 - No external data transmission
-- Fallback to in-memory storage when keychain is unavailable
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/secrets` | List all secrets (metadata only, no values) |
-| `GET` | `/api/secrets/:id/value` | Get a single secret's value |
+| `GET` | `/api/secrets` | List all secrets (metadata + short preview only, no values) |
 | `POST` | `/api/secrets` | Create a new secret |
 | `PUT` | `/api/secrets/:id` | Update a secret |
 | `DELETE` | `/api/secrets/:id` | Delete a secret |
@@ -130,4 +131,4 @@ MIT
 
 ---
 
-**Version**: 1.2.0 | **Author**: [andriyshevchenko](https://github.com/andriyshevchenko) | **Repository**: [github.com/andriyshevchenko/SecureVault](https://github.com/andriyshevchenko/SecureVault)
+**Version**: 2.0.0 | **Author**: [andriyshevchenko](https://github.com/andriyshevchenko) | **Repository**: [github.com/andriyshevchenko/SecureVault](https://github.com/andriyshevchenko/SecureVault)

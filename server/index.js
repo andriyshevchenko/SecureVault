@@ -11,6 +11,17 @@ const SERVICE_NAME = 'SecureVault';
 // Valid secret categories - shared constant to avoid duplication
 const VALID_CATEGORIES = ['password', 'api-key', 'token', 'certificate', 'note', 'other'];
 
+// Non-sensitive preview shown in the UI so a user can eyeball that the right
+// secret is stored. We reveal at most the first few characters, and only when
+// the secret is long enough that this leaks a negligible fraction. The stored
+// value and its length are never otherwise exposed over the API.
+const PREVIEW_PREFIX_LEN = 4;
+const PREVIEW_MIN_LENGTH = 12;
+function computePreview(value) {
+  if (typeof value !== 'string' || value.length < PREVIEW_MIN_LENGTH) return '';
+  return value.slice(0, PREVIEW_PREFIX_LEN);
+}
+
 // CORS configuration - restrict to localhost origins for security
 const allowedOrigins = [
   'http://localhost:5000',
@@ -44,67 +55,45 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' })); // Set limit for large certificates and keys
 
-// Check if keychain is available
+// The OS keychain is mandatory. A secret manager that silently fell back to
+// in-memory storage would lose secrets on restart and give a false sense of
+// security, so if the keychain is unavailable we fail loudly and refuse to run.
 let keychainAvailable = false;
-let fallbackStorage = {}; // Fallback in-memory storage when keychain is unavailable
-
-// Test keychain availability
 try {
   await keytar.setPassword(SERVICE_NAME, '__test__', 'test');
   await keytar.deletePassword(SERVICE_NAME, '__test__');
   keychainAvailable = true;
   console.log('✅ OS keychain is available and will be used for secure storage');
 } catch (error) {
-  console.warn('⚠️  OS keychain is not available. Using in-memory storage as fallback.');
-  console.warn('   Note: Secrets will be lost when the server restarts.');
+  console.error('❌ OS keychain is not available:', error.message);
+  console.error('   SecureVault stores secrets in the OS keychain and will not run without it.');
+  console.error('   Linux: install libsecret (e.g. `sudo apt install libsecret-1-dev`) and ensure a Secret Service (gnome-keyring/KWallet) is running.');
+  console.error('   macOS/Windows: ensure the system Keychain / Credential Manager is accessible.');
+  process.exit(1);
 }
 
 // In-memory cache for secret metadata (keychain only stores key-value pairs)
 // We'll store the full secret objects here, but the values will be in the keychain
 // Metadata is persisted to disk only when keychain is available
-let secretsMetadata = [];
+let secretsMetadata = loadMetadata();
+console.log(`📂 Loaded ${secretsMetadata.length} secret(s) from persistent storage`);
 
-if (keychainAvailable) {
-  secretsMetadata = loadMetadata();
-  console.log(`📂 Loaded ${secretsMetadata.length} secret(s) from persistent storage`);
-} else {
-  console.log('📂 Keychain unavailable; metadata persistence disabled, starting with empty in-memory storage');
-}
+let profilesData = loadProfiles();
+console.log(`📂 Loaded ${profilesData.length} profile(s) from persistent storage`);
 
-let profilesData = [];
-
-if (keychainAvailable) {
-  profilesData = loadProfiles();
-  console.log(`📂 Loaded ${profilesData.length} profile(s) from persistent storage`);
-} else {
-  console.log('📂 Keychain unavailable; profile persistence disabled, starting with empty in-memory storage');
-}
-
-// Storage abstraction layer
+// Storage abstraction layer — always backed by the OS keychain. The process
+// exits above if the keychain is unavailable, so there is no fallback path.
 const storage = {
   async setPassword(service, account, password) {
-    if (keychainAvailable) {
-      return await keytar.setPassword(service, account, password);
-    } else {
-      fallbackStorage[account] = password;
-    }
+    return await keytar.setPassword(service, account, password);
   },
-  
+
   async getPassword(service, account) {
-    if (keychainAvailable) {
-      return await keytar.getPassword(service, account);
-    } else {
-      return fallbackStorage[account] || null;
-    }
+    return await keytar.getPassword(service, account);
   },
-  
+
   async deletePassword(service, account) {
-    if (keychainAvailable) {
-      return await keytar.deletePassword(service, account);
-    } else {
-      delete fallbackStorage[account];
-      return true;
-    }
+    return await keytar.deletePassword(service, account);
   }
 };
 
@@ -122,25 +111,6 @@ app.get('/api/secrets', async (req, res) => {
   } catch (error) {
     console.error('Error fetching secrets:', error);
     res.status(500).json({ error: 'Failed to fetch secrets' });
-  }
-});
-
-// GET /api/secrets/:id/value - Get a single secret's value (for web UI reveal/copy)
-app.get('/api/secrets/:id/value', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const meta = secretsMetadata.find(s => s.id === id);
-    if (!meta) {
-      return res.status(404).json({ error: 'Secret not found' });
-    }
-    const value = await storage.getPassword(SERVICE_NAME, id);
-    if (!value) {
-      return res.status(404).json({ error: 'Secret value not found in keychain' });
-    }
-    res.json({ value });
-  } catch (error) {
-    console.error('Error fetching secret value:', error);
-    res.status(500).json({ error: 'Failed to fetch secret value' });
   }
 });
 
@@ -182,8 +152,8 @@ app.post('/api/secrets', async (req, res) => {
     // Store the secret value in keychain
     await storage.setPassword(SERVICE_NAME, id, value);
     
-    // Store metadata with trimmed title
-    const metadata = { id, title: title.trim(), category, notes, createdAt, updatedAt };
+    // Store metadata with trimmed title and a short non-sensitive preview
+    const metadata = { id, title: title.trim(), category, notes, preview: computePreview(value), createdAt, updatedAt };
     secretsMetadata.push(metadata);
     
     // Persist metadata to disk with rollback on failure (only if keychain available)
@@ -258,6 +228,7 @@ app.put('/api/secrets/:id', async (req, res) => {
       title: title !== undefined ? title.trim() : existingMeta.title,
       category: category !== undefined ? category : existingMeta.category,
       notes: notes !== undefined ? notes : existingMeta.notes,
+      preview: value !== undefined ? computePreview(value) : existingMeta.preview,
       updatedAt: updatedAt !== undefined ? updatedAt : existingMeta.updatedAt
     };
     secretsMetadata[metaIndex] = updatedMeta;
@@ -464,35 +435,6 @@ app.delete('/api/profiles/:id', (req, res) => {
   } catch (error) {
     console.error('Error deleting profile:', error);
     res.status(500).json({ error: 'Failed to delete profile' });
-  }
-});
-
-// GET /api/profiles/:id/resolve - Resolve profile to env var → value pairs
-// WARNING: This endpoint exposes secret values. It is used by the CLI.
-// It should be protected with authentication in production.
-app.get('/api/profiles/:id/resolve', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const profile = profilesData.find(p => p.id === id);
-    if (!profile) {
-      return res.status(404).json({ error: 'Profile not found' });
-    }
-
-    const resolved = {};
-    for (const mapping of profile.mappings) {
-      try {
-        const value = await storage.getPassword(SERVICE_NAME, mapping.secretId);
-        if (value !== null) {
-          resolved[mapping.envVar] = value;
-        }
-      } catch (err) {
-        console.warn(`Warning: Could not resolve secret ${mapping.secretId}: ${err.message}`);
-      }
-    }
-    res.json({ profile: profile.name, variables: resolved });
-  } catch (error) {
-    console.error('Error resolving profile:', error);
-    res.status(500).json({ error: 'Failed to resolve profile' });
   }
 });
 

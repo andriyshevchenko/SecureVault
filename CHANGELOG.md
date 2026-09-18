@@ -58,6 +58,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added validation for loaded metadata to handle corrupted files gracefully
 - Extracted persistence functions to separate module for better testability
 
+## [2.0.0] - 2026-09-18
+
+### BREAKING
+- Raw secret values are no longer exposed by the HTTP API. Removed `GET /api/secrets/:id/value` and `GET /api/profiles/:id/resolve`. Secret values leave the OS keychain only at `securevault run` time, injected as environment variables into the child process.
+- The web UI no longer reveals or copies raw secret values. It now shows only a short prefix (the first few characters, and only for sufficiently long secrets) so you can verify the correct secret is stored.
+- The OS keychain is now mandatory. SecureVault refuses to start (and `securevault run` aborts) if the keychain is unavailable. The previous silent in-memory fallback has been removed — it could lose secrets on restart and gave a false sense of security.
+- The edit form no longer prefills the secret value. Leave it blank to keep the current value, or type a new one to replace it.
+
+### Added
+- Secret metadata now includes a non-sensitive `preview` (computed at write time) for UI verification. The value's length is never exposed.
+- `securevault run` supports a `--` separator so the wrapped command can carry its own flags, e.g. `securevault run --profile dev -- mytool --profile prod`.
+
+### Fixed
+- **Windows argument handling**: `securevault run` no longer mangles command arguments that contain spaces or quotes. Commands are spawned via `cross-spawn` with proper argument boundaries and without an intermediate shell, fixing e.g. `terraform apply -var "region us-east"`.
+- `repository.url` in `package.json` now points to the correct repository.
+
+### Security
+- No API endpoint returns raw secret values under any circumstances.
+- Keychain errors during `securevault run` are now fatal instead of silently injecting empty values.
+
 ## [Unreleased]
 
 ### Planned

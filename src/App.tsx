@@ -67,10 +67,13 @@ function App() {
 
   const handleEditSecret = async (data: SecretFormData) => {
     if (!editingSecret) return
-    
+
     try {
+      const { value, ...rest } = data
       const updated = await ApiClient.updateSecret(editingSecret.id, {
-        ...data,
+        ...rest,
+        // Blank value means "keep current" — never send an empty value.
+        ...(value.trim() ? { value } : {}),
         updatedAt: Date.now(),
       })
       setSecrets((current) =>
@@ -96,14 +99,11 @@ function App() {
     }
   }
 
-  const handleOpenEdit = async (secret: Secret) => {
-    try {
-      const value = await ApiClient.getSecretValue(secret.id)
-      setEditingSecret({ ...secret, value })
-      setIsDialogOpen(true)
-    } catch {
-      toast.error('Failed to fetch secret value for editing')
-    }
+  const handleOpenEdit = (secret: Secret) => {
+    // Secret values never leave the keychain, so the edit form opens without a
+    // prefilled value; leaving it blank keeps the existing value.
+    setEditingSecret(secret)
+    setIsDialogOpen(true)
   }
 
   const handleCloseDialog = () => {

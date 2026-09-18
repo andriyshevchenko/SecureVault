@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Secret } from '@/lib/types'
-import { ApiClient } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,9 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Eye, EyeSlash, Copy, PencilSimple, Trash, Check } from '@phosphor-icons/react'
-import { toast } from 'sonner'
-import { motion } from 'framer-motion'
+import { PencilSimple, Trash } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
 
@@ -40,46 +37,7 @@ const categoryLabels: Record<string, string> = Object.fromEntries(
 )
 
 export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
-  const [isRevealed, setIsRevealed] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [secretValue, setSecretValue] = useState<string | null>(null)
-  const [isLoadingValue, setIsLoadingValue] = useState(false)
-
-  const fetchValue = async () => {
-    if (secretValue !== null) return secretValue
-    setIsLoadingValue(true)
-    try {
-      const value = await ApiClient.getSecretValue(secret.id)
-      setSecretValue(value)
-      return value
-    } catch {
-      toast.error('Failed to fetch secret value')
-      return null
-    } finally {
-      setIsLoadingValue(false)
-    }
-  }
-
-  const handleCopy = async () => {
-    try {
-      const value = await fetchValue()
-      if (!value) return
-      await navigator.clipboard.writeText(value)
-      setIsCopied(true)
-      toast.success('Copied to clipboard')
-      setTimeout(() => setIsCopied(false), 2000)
-    } catch {
-      toast.error('Failed to copy to clipboard')
-    }
-  }
-
-  const handleReveal = async () => {
-    if (!isRevealed) {
-      await fetchValue()
-    }
-    setIsRevealed(!isRevealed)
-  }
 
   const handleDelete = () => {
     onDelete(secret.id)
@@ -106,36 +64,15 @@ export function SecretCard({ secret, onEdit, onDelete }: SecretCardProps) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-muted/30 rounded px-3 py-2 font-mono text-sm overflow-hidden flex items-center min-h-[36px]">
-                {isLoadingValue ? (
-                  <span className="text-muted-foreground animate-pulse">Loading...</span>
-                ) : isRevealed ? (
-                  <span className="break-all">{secretValue ?? '...'}</span>
+                {secret.preview ? (
+                  <span className="break-all">
+                    <span className="text-foreground">{secret.preview}</span>
+                    <span className="text-muted-foreground tracking-wider">••••••••</span>
+                  </span>
                 ) : (
                   <span className="text-muted-foreground tracking-wider">••••••••••••</span>
                 )}
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleReveal}
-                className="shrink-0 hover:bg-accent/10 hover:text-accent"
-              >
-                {isRevealed ? <EyeSlash weight="bold" /> : <Eye weight="bold" />}
-              </Button>
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleCopy}
-                  className="shrink-0 hover:bg-accent/10 hover:text-accent"
-                >
-                  {isCopied ? (
-                    <Check weight="bold" className="text-accent" />
-                  ) : (
-                    <Copy weight="bold" />
-                  )}
-                </Button>
-              </motion.div>
             </div>
             
             {secret.notes && (

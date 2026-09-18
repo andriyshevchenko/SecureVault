@@ -49,7 +49,7 @@ export function SecretDialog({
     if (initialData) {
       setFormData({
         title: initialData.title,
-        value: initialData.value,
+        value: '', // never prefilled — secret values never leave the OS keychain
         category: initialData.category,
         notes: initialData.notes || '',
       })
@@ -65,7 +65,9 @@ export function SecretDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.title.trim() || !formData.value.trim()) return
+    if (!formData.title.trim()) return
+    // A value is required when adding; when editing, a blank value keeps the current one.
+    if (mode === 'add' && !formData.value.trim()) return
     onSubmit(formData)
   }
 
@@ -126,10 +128,15 @@ export function SecretDialog({
                 onChange={(e) =>
                   setFormData({ ...formData, value: e.target.value })
                 }
-                placeholder="Enter your secret"
-                required
+                placeholder={mode === 'edit' ? 'Leave blank to keep current value' : 'Enter your secret'}
+                required={mode === 'add'}
                 className="bg-muted/30 border-border/50 font-mono"
               />
+              {mode === 'edit' && (
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to keep the current value. Secret values are stored in your OS keychain and are never displayed.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (Optional)</Label>
