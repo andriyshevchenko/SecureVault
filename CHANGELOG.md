@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added validation for loaded metadata to handle corrupted files gracefully
 - Extracted persistence functions to separate module for better testability
 
+## [2.1.0] - 2026-09-18
+
+### Added
+- `securevault install-skill` / `securevault uninstall-skill`: opt-in commands that install an AI-agent skill teaching Claude Code, GitHub Copilot, and OpenAI Codex to inject secrets via `securevault run --profile` instead of reading `.env` files. Auto-detects installed agents and supports `--claude`, `--copilot`, `--codex`, `--all`, `--path <dir>`, and `--force`. Nothing is written unless you run the command, and it prints exactly which files it writes.
+
 ## [2.0.2] - 2026-09-18
 
 ### Fixed

@@ -26,6 +26,8 @@ COMMANDS:
   securevault health                        Returns OK if the backend API (port 3001) is reachable. Use this to check before calling other commands.
   securevault list                          Print all stored secret titles, categories, and dates. Does NOT print secret values.
   securevault profiles                      Print all profiles with their environment variable mappings.
+  securevault install-skill [--claude|--copilot|--codex|--all|--path <dir>]  Install the SecureVault AI skill so your coding agent knows to inject secrets via profiles (opt-in; auto-detects installed agents).
+  securevault uninstall-skill [--claude|--copilot|--codex]  Remove the installed SecureVault AI skill.
   securevault --help                        Print this message.
 
 WORKFLOW FOR AI AGENTS:
@@ -180,6 +182,16 @@ if (cmd === 'list') {
 if (cmd === 'profiles') {
   await listProfiles();
   process.exit(0);
+}
+
+if (cmd === 'install-skill') {
+  const { installSkill } = await import('./skill.js');
+  process.exit(await installSkill(args));
+}
+
+if (cmd === 'uninstall-skill') {
+  const { uninstallSkill } = await import('./skill.js');
+  process.exit(await uninstallSkill(args));
 }
 
 console.log('🔒 Starting SecureVault...\n');

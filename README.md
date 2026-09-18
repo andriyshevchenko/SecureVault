@@ -51,6 +51,28 @@ securevault run terraform apply --profile aws
 
 SecureVault fetches secret values from the OS keychain at runtime and injects them as environment variables. The child process stdout/stderr is piped through, and exit codes are forwarded.
 
+## AI Agent Skill (optional)
+
+SecureVault ships a skill that teaches AI coding agents to inject secrets via profiles instead of reading `.env` files. Installation is **opt-in** — nothing is written to your machine unless you run the command, and it prints exactly which files it writes:
+
+```bash
+securevault install-skill               # auto-detect installed agents
+securevault install-skill --claude      # Claude Code    (~/.claude/skills/securevault/SKILL.md)
+securevault install-skill --copilot     # GitHub Copilot (~/.copilot/instructions/securevault.instructions.md)
+securevault install-skill --codex       # OpenAI Codex   (~/.agents/skills/securevault/SKILL.md)
+securevault install-skill --all         # all of the above
+securevault install-skill --path <dir>  # a custom directory
+```
+
+Remove it any time:
+
+```bash
+securevault uninstall-skill             # all known targets
+securevault uninstall-skill --claude    # a specific agent
+```
+
+Restart your agent after installing so it picks up the skill.
+
 ## Features
 
 - **Secure Storage** — OS keychain (Keychain on macOS, Credential Vault on Windows, Secret Service API on Linux)
