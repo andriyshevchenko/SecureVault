@@ -58,6 +58,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added validation for loaded metadata to handle corrupted files gracefully
 - Extracted persistence functions to separate module for better testability
 
+## [2.0.1] - 2026-09-18
+
+### Security
+- Drastically reduced the dependency surface that end users install. Only the actual runtime dependencies (`express`, `cors`, `keytar`, `cross-spawn`, `http-server`) remain in `dependencies`; the entire frontend build toolchain (React, Radix UI, Vite, Tailwind, three, d3, etc.) — which is bundled into `dist/` at build time and never used at runtime — moved to `devDependencies`. This removes all previously reported high/moderate vulnerabilities from a production install (`npm audit --omit=dev` reports 0).
+
+### Fixed
+- Publishing no longer builds during `npm ci` (removed the `prepare` script that triggered a redundant, occasionally segfaulting `vite build` on CI). The build now runs once via the explicit CI step.
+
 ## [2.0.0] - 2026-09-18
 
 ### BREAKING
