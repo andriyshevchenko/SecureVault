@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added validation for loaded metadata to handle corrupted files gracefully
 - Extracted persistence functions to separate module for better testability
 
+## [2.1.1] - 2026-09-19
+
+### Fixed
+- `install-skill --copilot` now writes to the correct GitHub Copilot personal skills path `~/.copilot/skills/securevault/SKILL.md` (a standard `SKILL.md` agent skill), instead of the wrong `~/.copilot/instructions/` location. All three agents (Claude, Copilot, Codex) now use the same `SKILL.md` skill format.
+
 ## [2.1.0] - 2026-09-18
 
 ### Added

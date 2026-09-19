@@ -58,7 +58,7 @@ SecureVault ships a skill that teaches AI coding agents to inject secrets via pr
 ```bash
 securevault install-skill               # auto-detect installed agents
 securevault install-skill --claude      # Claude Code    (~/.claude/skills/securevault/SKILL.md)
-securevault install-skill --copilot     # GitHub Copilot (~/.copilot/instructions/securevault.instructions.md)
+securevault install-skill --copilot     # GitHub Copilot (~/.copilot/skills/securevault/SKILL.md)
 securevault install-skill --codex       # OpenAI Codex   (~/.agents/skills/securevault/SKILL.md)
 securevault install-skill --all         # all of the above
 securevault install-skill --path <dir>  # a custom directory

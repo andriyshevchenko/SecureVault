@@ -16,30 +16,32 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DESCRIPTION =
   'Run any command that needs secrets by injecting them from the OS keychain as environment variables via `securevault run --profile`. Use instead of reading .env files or handling raw secret values.';
 
-function skillBody() {
-  return readFileSync(join(__dirname, 'securevault-skill.md'), 'utf8').trimEnd() + '\n';
+// All three agents use the same personal SKILL.md format: YAML frontmatter
+// (name + description) followed by the shared instructions body.
+const FRONTMATTER = `---\nname: securevault\ndescription: '${DESCRIPTION}'\n---\n\n`;
+
+function skillContent() {
+  const body = readFileSync(join(__dirname, 'securevault-skill.md'), 'utf8').trimEnd() + '\n';
+  return FRONTMATTER + body;
 }
 
 // Each supported agent: where it lives (for auto-detection) and where its
-// skill/instructions file goes, plus the frontmatter that agent expects.
+// personal SKILL.md goes.
 const TARGETS = {
   claude: {
     label: 'Claude Code',
     detectDir: join(homedir(), '.claude'),
     dest: join(homedir(), '.claude', 'skills', 'securevault', 'SKILL.md'),
-    frontmatter: () => `---\nname: securevault\ndescription: ${DESCRIPTION}\n---\n\n`,
   },
   codex: {
     label: 'OpenAI Codex',
     detectDir: join(homedir(), '.codex'),
     dest: join(homedir(), '.agents', 'skills', 'securevault', 'SKILL.md'),
-    frontmatter: () => `---\nname: securevault\ndescription: ${DESCRIPTION}\n---\n\n`,
   },
   copilot: {
     label: 'GitHub Copilot',
     detectDir: join(homedir(), '.copilot'),
-    dest: join(homedir(), '.copilot', 'instructions', 'securevault.instructions.md'),
-    frontmatter: () => `---\ndescription: ${DESCRIPTION}\napplyTo: '**'\n---\n\n`,
+    dest: join(homedir(), '.copilot', 'skills', 'securevault', 'SKILL.md'),
   },
 };
 
@@ -69,7 +71,7 @@ export async function installSkill(args) {
 
   if (customPath) {
     const dest = join(customPath, 'securevault', 'SKILL.md');
-    if (writeSkill(dest, TARGETS.claude.frontmatter() + skillBody(), force)) {
+    if (writeSkill(dest, skillContent(), force)) {
       console.log(`✅ Wrote skill to ${dest}`);
     } else {
       console.log(`↷ Already exists (use --force to overwrite): ${dest}`);
@@ -92,7 +94,7 @@ export async function installSkill(args) {
   let wrote = 0;
   for (const key of targets) {
     const t = TARGETS[key];
-    if (writeSkill(t.dest, t.frontmatter() + skillBody(), force)) {
+    if (writeSkill(t.dest, skillContent(), force)) {
       console.log(`✅ ${t.label}: ${t.dest}`);
       wrote++;
     } else {
