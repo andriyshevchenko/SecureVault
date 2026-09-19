@@ -36,7 +36,7 @@ const TARGETS = {
   codex: {
     label: 'OpenAI Codex',
     detectDir: join(homedir(), '.codex'),
-    dest: join(homedir(), '.agents', 'skills', 'securevault', 'SKILL.md'),
+    dest: join(homedir(), '.codex', 'skills', 'securevault', 'SKILL.md'),
   },
   copilot: {
     label: 'GitHub Copilot',

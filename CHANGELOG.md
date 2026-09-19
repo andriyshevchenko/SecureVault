@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added validation for loaded metadata to handle corrupted files gracefully
 - Extracted persistence functions to separate module for better testability
 
+## [2.1.2] - 2026-09-19
+
+### Fixed
+- `install-skill --codex` now writes to `~/.codex/skills/securevault/SKILL.md`, the location the Codex CLI reads personal skills from, instead of `~/.agents/skills/`.
+
 ## [2.1.1] - 2026-09-19
 
 ### Fixed
